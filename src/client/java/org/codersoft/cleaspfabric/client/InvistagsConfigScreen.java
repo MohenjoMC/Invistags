@@ -5,11 +5,16 @@ import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.codersoft.cleaspfabric.ModConfig;
+import org.codersoft.cleaspfabric.Toggle;
 
 /**
  * Builds the shared InvisTags config screen. Used both by the Mod Menu
  * integration and by the in-game keybind, so the screen works even when
  * Mod Menu is not installed.
+ *
+ * <p>Every entry comes from {@link Toggle}, so the screen cannot fall out of
+ * step with the command or the config file.
  */
 public final class InvistagsConfigScreen {
 
@@ -26,59 +31,16 @@ public final class InvistagsConfigScreen {
         ConfigCategory general = builder.getOrCreateCategory(
             Component.translatable("config.invistags.category.general"));
 
-        general.addEntry(entries
-            .startBooleanToggle(
-                Component.translatable("config.invistags.showInvisibleSkin"),
-                ModConfig.showInvisibleSkin)
-            .setDefaultValue(true)
-            .setTooltip(Component.translatable("config.invistags.showInvisibleSkin.tooltip"))
-            .setSaveConsumer(value -> ModConfig.showInvisibleSkin = value)
-            .build());
-
-        general.addEntry(entries
-            .startBooleanToggle(
-                Component.translatable("config.invistags.showInvisibleNametag"),
-                ModConfig.showInvisibleNametag)
-            .setDefaultValue(true)
-            .setTooltip(Component.translatable("config.invistags.showInvisibleNametag.tooltip"))
-            .setSaveConsumer(value -> ModConfig.showInvisibleNametag = value)
-            .build());
-
-        general.addEntry(entries
-            .startBooleanToggle(
-                Component.translatable("config.invistags.showInvisibleMobs"),
-                ModConfig.showInvisibleMobs)
-            .setDefaultValue(false)
-            .setTooltip(Component.translatable("config.invistags.showInvisibleMobs.tooltip"))
-            .setSaveConsumer(value -> ModConfig.showInvisibleMobs = value)
-            .build());
-
-        general.addEntry(entries
-            .startBooleanToggle(
-                Component.translatable("config.invistags.showInvisibleGear"),
-                ModConfig.showInvisibleGear)
-            .setDefaultValue(false)
-            .setTooltip(Component.translatable("config.invistags.showInvisibleGear.tooltip"))
-            .setSaveConsumer(value -> ModConfig.showInvisibleGear = value)
-            .build());
-
-        general.addEntry(entries
-            .startBooleanToggle(
-                Component.translatable("config.invistags.flagVanishedPlayers"),
-                ModConfig.flagVanishedPlayers)
-            .setDefaultValue(false)
-            .setTooltip(Component.translatable("config.invistags.flagVanishedPlayers.tooltip"))
-            .setSaveConsumer(value -> ModConfig.flagVanishedPlayers = value)
-            .build());
-
-        general.addEntry(entries
-            .startBooleanToggle(
-                Component.translatable("config.invistags.rememberState"),
-                ModConfig.rememberState)
-            .setDefaultValue(true)
-            .setTooltip(Component.translatable("config.invistags.rememberState.tooltip"))
-            .setSaveConsumer(value -> ModConfig.rememberState = value)
-            .build());
+        for (Toggle toggle : Toggle.values()) {
+            general.addEntry(entries
+                .startBooleanToggle(
+                    Component.translatable(toggle.labelKey()),
+                    ModConfig.get(toggle))
+                .setDefaultValue(toggle.defaultValue())
+                .setTooltip(Component.translatable(toggle.tooltipKey()))
+                .setSaveConsumer(value -> ModConfig.set(toggle, value))
+                .build());
+        }
 
         general.addEntry(entries
             .startTextDescription(Component.translatable("config.invistags.hint"))

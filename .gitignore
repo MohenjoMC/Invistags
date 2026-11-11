@@ -2,5 +2,5 @@
 /.gradle/
 /build/
 /build/classes/java/client/
-/build/classes/java/main/.DS_Store
-bin/
+/build/classes/java/main/
+/logs/
