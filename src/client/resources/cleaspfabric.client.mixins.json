@@ -6,7 +6,6 @@
   "refmap": "cleaspfabric.client.mixins.refmap.json",
   "client": [
     "EntityRendererMixin",
-    "LabelRenderMixin",
     "LabelSneakMixin",
     "InvisibilityRenderMixin",
     "PlayerGearMixin"

@@ -1,60 +1,45 @@
 package org.codersoft.cleaspfabric.mixin.client;
 
-import net.minecraft.client.render.entity.PlayerEntityRenderer;
-import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.PlayerLikeEntity;
+import org.codersoft.cleaspfabric.Toggle;
+
+import org.codersoft.cleaspfabric.ModConfig;
+
+import net.minecraft.client.item.ItemModelManager;
+import net.minecraft.client.render.entity.BipedEntityRenderer;
+import net.minecraft.client.render.entity.state.BipedEntityRenderState;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
 import org.codersoft.cleaspfabric.client.GearReveal;
-import org.codersoft.cleaspfabric.client.ModConfig;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Map;
-
 /**
- * Gives the render-state extraction a temporary view of remembered gear, and marks
- * flagged players' labels.
+ * Gives an invisible player's render state the armour and held items the client last saw.
+ *
+ * <p>Runs after vanilla extracted the equipment into the render state and before any of it
+ * is drawn. The live entity is never touched, so there is no swap to undo.
  */
-@Mixin(PlayerEntityRenderer.class)
+@Mixin(BipedEntityRenderer.class)
 public class PlayerGearMixin {
 
-    @Unique
-    private Map<EquipmentSlot, ItemStack> invistags$replaced = Map.of();
-
     @Inject(
-        method = "updateRenderState(Lnet/minecraft/entity/PlayerLikeEntity;Lnet/minecraft/client/render/entity/state/PlayerEntityRenderState;F)V",
-        at = @At("HEAD")
-    )
-    private void invistags$equipRememberedGear(
-        PlayerLikeEntity entity,
-        PlayerEntityRenderState state,
-        float tickDelta,
-        CallbackInfo ci
-    ) {
-        invistags$replaced = Map.of();
-        if (!ModConfig.showInvisibleGear) return;
-        if (!(entity instanceof PlayerEntity player) || !player.isInvisible()) return;
-        invistags$replaced = GearReveal.equipMissing(player);
-    }
-
-    @Inject(
-        method = "updateRenderState(Lnet/minecraft/entity/PlayerLikeEntity;Lnet/minecraft/client/render/entity/state/PlayerEntityRenderState;F)V",
+        method = "updateBipedRenderState(Lnet/minecraft/entity/LivingEntity;Lnet/minecraft/client/render/entity/state/BipedEntityRenderState;FLnet/minecraft/client/item/ItemModelManager;)V",
         at = @At("RETURN")
     )
-    private void invistags$restoreGear(
-        PlayerLikeEntity entity,
-        PlayerEntityRenderState state,
-        float tickDelta,
+    private static void invistags$fillRememberedGear(
+        LivingEntity entity,
+        BipedEntityRenderState state,
+        float tickProgress,
+        ItemModelManager itemModelResolver,
         CallbackInfo ci
     ) {
-        if (entity instanceof PlayerEntity player && !invistags$replaced.isEmpty()) {
-            GearReveal.restore(player, invistags$replaced);
+        if (!ModConfig.get(Toggle.GEAR)) {
+            return;
         }
-        invistags$replaced = Map.of();
+        if (entity instanceof PlayerEntity player && player.isInvisible()) {
+            GearReveal.decorate(player, state, itemModelResolver);
+        }
     }
 }

@@ -11,11 +11,10 @@ Built for **Minecraft 1.21.11**, **26.1.2**, **26.2**, and **26.3**.
 ## Features
 
 - **Nametag visibility** — Forces nametags to render above invisible players regardless of render distance or status effects.
-- **Full nametag opacity** — Restores the nametag background and text to 100% opacity (bypasses the transparency applied by the invisibility effect).
 - **Skin visibility** — Renders the player body/skin at full opacity instead of the ghostly semi-transparent effect.
 - **Gear reveal** — Restores armour and held items on invisible players when a server strips them, using the last gear your client saw. Vanilla itself keeps gear visible; servers that send empty equipment packets are the target here.
 - **Invisible-player toast** — Shows a toast with the player's name and head the first time an invisible player comes within 64 blocks. Each invisibility is announced once; the alert re-arms when the player becomes visible or leaves the world.
-- **Sneaking fix** — Corrects the sneaking pose for invisible players when the nametag is forced visible.
+- **Sneaking fix** — Keeps a forced nametag visible through blocks while the invisible player is crouching.
 - **Invisible mob support** — Optional reveal for invisible mobs' bodies, plus nametags for custom-named invisible mobs (off by default).
 - **State persistence** — **Remember state** is on by default, so the last toggles are restored on launch. Turn it off to start with everything disabled every time.
 - **Keybinds** — `I` toggles skin + nametags + gear together, `O` opens the config screen.
@@ -189,32 +188,33 @@ The 26.x branches use a significantly different rendering API (unobfuscated Moja
 
 ```
 src/
-├── main/
+├── main/                                      # mapping-independent policy, shared by all version branches
 │   ├── java/org/codersoft/cleaspfabric/
 │   │   ├── Cleaspfabric.java              — Mod entrypoint (ModInitializer)
-│   │   └── ...
+│   │   ├── ModConfig.java                 — Toggle -> boolean store + JSON persistence
+│   │   ├── NametagPolicy.java             — Should this label render? Should its pose be corrected?
+│   │   ├── ToastEpisodes.java             — Toast episode state machine (announce once per invisibility)
+│   │   └── Toggle.java                    — Single declaration of a toggle (command, config key, default, labels)
 │   └── resources/
 │       ├── fabric.mod.json                 — Mod metadata
 │       ├── cleaspfabric.mixins.json        — Main source set mixins (reserved)
 │       └── assets/invistags/icon.png       — Mod icon
-└── client/
+└── client/                                    # Minecraft/presentation adapters, the only part a version branch rewrites
     ├── java/org/codersoft/cleaspfabric/
     │   ├── client/
     │   │   ├── CleaspfabricClient.java     — Client entrypoint, /invis command, keybinds
     │   │   ├── CleaspfabricDataGenerator.java
-    │   │   ├── GearReveal.java             — Last-seen gear cache + render-state swap
+    │   │   ├── GearReveal.java             — Last-seen gear cache + render-state decoration
     │   │   ├── InvistagsConfigScreen.java  — Shared Cloth Config screen
-    │   │   ├── InvisiblePlayerDetector.java— Pure toast-selection logic
     │   │   ├── InvisiblePlayerNotifier.java— Per-tick proximity tracking + toasts
     │   │   ├── InvisiblePlayerToast.java   — System toast with a player-head icon
-    │   │   ├── ModConfig.java              — Toggle state + JSON persistence
     │   │   ├── ModMenuIntegration.java     — Mod Menu entrypoint
+    │   │   └── PlayerRoster.java           — Which players the reveal/alert rules may consider
     │   └── mixin/client/
-    │       ├── EntityRendererMixin.java    — Forces shouldShowName() to true
+    │       ├── EntityRendererMixin.java    — Forces hasLabel() to true via NametagPolicy
     │       ├── InvisibilityRenderMixin.java— Restores skin opacity
-    │       ├── LabelRenderMixin.java       — Restores nametag opacity
-    │       ├── LabelSneakMixin.java        — Fixes sneaking pose
-    │       └── PlayerGearMixin.java        — Temporary gear swap for the render pass
+    │       ├── LabelSneakMixin.java        — Adds the through-block label copy while sneaking
+    │       └── PlayerGearMixin.java        — Fills render-state gear from the cache
     └── resources/
         ├── assets/invistags/lang/en_us.json — Keybind/config strings
         └── cleaspfabric.client.mixins.json — Client mixin registration
@@ -224,11 +224,13 @@ src/gametest/                                — Optional client gametest harnes
 
 ## Development
 
-Run the headless unit tests (config persistence and toast selection, no Minecraft launch required):
+Run the headless unit tests (toggle catalogue, config persistence and toast episodes, no Minecraft launch required):
 
 ```bash
 ./gradlew test
 ```
+
+The tests also guard the toggle catalogue — unique command and config names, and both translation keys present for every toggle — and the toast episode rules, so a new toggle or a changed episode rule fails the build rather than the game.
 
 Run the client gametest (boots a real singleplayer world, applies every mixin, opens the config screen and runs `/invis`):
 
@@ -237,6 +239,12 @@ Run the client gametest (boots a real singleplayer world, applies every mixin, o
 ```
 
 Screenshots are written to `build/run/clientGameTest/screenshots/`.
+
+### Architecture
+
+Each user-facing toggle is declared once in `Toggle`: command name, JSON config key, default value, status and feedback labels, and the translation key suffixes. The `/invis` command tree, the Cloth Config screen and the status dump are all built by looping over `Toggle.values()`, so a new toggle is one enum constant plus its translations. `ModConfig` only stores a value per toggle and reads/writes `invistags.json`; it does not know what any toggle does. Rendering behaviour lives in the mixins under `mixin/client/`, which read the toggles they need. The unit tests loop over the same catalogue, so every toggle must round-trip through the config file and have the translations the screen and command expect.
+
+`src/main` holds the policy that never touches a renderer: the toggle catalogue, config persistence, `NametagPolicy` and `ToastEpisodes`. `src/client` holds the Minecraft adapters — the entrypoint, the notifier, the gear cache, `PlayerRoster` and the mixins. The version branches port the policy verbatim and rewrite only the client side; see `docs/adr/0001-shared-policy-across-version-branches.md`.
 
 Open the project in IntelliJ IDEA or Eclipse:
 

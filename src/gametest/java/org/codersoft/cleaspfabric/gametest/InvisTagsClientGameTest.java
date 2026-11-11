@@ -1,11 +1,14 @@
 package org.codersoft.cleaspfabric.gametest;
 
+import org.codersoft.cleaspfabric.Toggle;
+
+import org.codersoft.cleaspfabric.ModConfig;
+
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import org.codersoft.cleaspfabric.client.InvisiblePlayerNotifier;
 import org.codersoft.cleaspfabric.client.InvistagsConfigScreen;
-import org.codersoft.cleaspfabric.client.ModConfig;
 
 /**
  * Loads a real singleplayer world so every client renderer and the mixins applied
@@ -16,14 +19,22 @@ public final class InvisTagsClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
+        // Keep chunk generation inside the harness's 1200-tick world-load budget on
+        // software-rendered hosts; the test does not care how far the player can see.
+        context.runOnClient(client -> {
+            client.options.getViewDistance().setValue(2);
+            client.options.getSimulationDistance().setValue(5);
+            client.options.getMaxFps().setValue(20);
+        });
+
         try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {
             singleplayer.getClientWorld().waitForChunksRender();
 
             context.runOnClient(client -> {
-                ModConfig.showInvisibleSkin = true;
-                ModConfig.showInvisibleNametag = true;
-                ModConfig.showInvisibleGear = true;
-                ModConfig.toastInvisiblePlayers = true;
+                ModConfig.set(Toggle.SKIN, true);
+                ModConfig.set(Toggle.NAMETAG, true);
+                ModConfig.set(Toggle.GEAR, true);
+                ModConfig.set(Toggle.TOAST, true);
             });
             context.waitTicks(20);
 

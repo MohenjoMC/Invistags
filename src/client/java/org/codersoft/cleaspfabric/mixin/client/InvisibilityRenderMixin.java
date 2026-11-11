@@ -1,12 +1,15 @@
 package org.codersoft.cleaspfabric.mixin.client;
 
+import org.codersoft.cleaspfabric.Toggle;
+
+import org.codersoft.cleaspfabric.ModConfig;
+
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.state.CameraRenderState;
-import org.codersoft.cleaspfabric.client.ModConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -29,10 +32,10 @@ public class InvisibilityRenderMixin {
         if (!state.invisible) return;
 
         if (state instanceof PlayerEntityRenderState) {
-            if (ModConfig.showInvisibleSkin) {
+            if (ModConfig.get(Toggle.SKIN)) {
                 state.invisible = false;
             }
-        } else if (ModConfig.showInvisibleMobs) {
+        } else if (ModConfig.get(Toggle.MOBS)) {
             state.invisible = false;
         }
     }

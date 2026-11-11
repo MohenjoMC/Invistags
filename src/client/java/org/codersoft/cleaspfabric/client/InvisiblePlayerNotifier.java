@@ -1,5 +1,11 @@
 package org.codersoft.cleaspfabric.client;
 
+import org.codersoft.cleaspfabric.ToastEpisodes;
+
+import org.codersoft.cleaspfabric.ModConfig;
+
+import org.codersoft.cleaspfabric.Toggle;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.util.DefaultSkinHelper;
@@ -8,30 +14,32 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.SkinTextures;
 import net.minecraft.text.Text;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 /**
  * Shows a toast with the player's name and head the first time an invisible player
- * comes within {@link #ALERT_RADIUS} blocks. A player is only announced once per
- * invisibility episode: becoming visible (or leaving the world) forgets them so a
- * later invisibility triggers a fresh toast, while walking in and out of range does
- * not repeat it.
+ * comes within {@link #ALERT_RADIUS} blocks. Episode tracking lives in
+ * {@link ToastEpisodes} and the player filter lives in {@link PlayerRoster}; this class
+ * only adapts the Minecraft client to them.
  */
 public final class InvisiblePlayerNotifier {
 
     /** Players farther away than this are not announced yet. */
     public static final double ALERT_RADIUS = 64.0;
 
-    private static final Set<UUID> NOTIFIED = new HashSet<>();
+    private static final ToastEpisodes EPISODES = new ToastEpisodes();
     private static ClientWorld trackedWorld;
 
     private InvisiblePlayerNotifier() {
     }
 
     public static void tick(MinecraftClient client) {
-        if (!ModConfig.toastInvisiblePlayers) {
+        if (!ModConfig.get(Toggle.TOAST)) {
             clear();
             return;
         }
@@ -42,33 +50,28 @@ public final class InvisiblePlayerNotifier {
             return;
         }
         if (world != trackedWorld) {
-            NOTIFIED.clear();
+            EPISODES.reset();
             trackedWorld = world;
         }
 
-        Set<UUID> invisibleIds = new HashSet<>();
-        Set<UUID> nearbyInvisible = new HashSet<>();
-        double radiusSquared = ALERT_RADIUS * ALERT_RADIUS;
-        for (PlayerEntity player : world.getPlayers()) {
-            if (player == client.player || player.isSpectator() || !player.isInvisible()) {
-                continue;
-            }
-            invisibleIds.add(player.getUuid());
-            if (client.player.squaredDistanceTo(player) <= radiusSquared) {
-                nearbyInvisible.add(player.getUuid());
-            }
+        List<PlayerEntity> players = PlayerRoster.subjects(client);
+        List<ToastEpisodes.Sighting> sightings = new ArrayList<>(players.size());
+        Map<UUID, PlayerEntity> byId = new HashMap<>(players.size());
+        for (PlayerEntity player : players) {
+            byId.put(player.getUuid(), player);
+            sightings.add(new ToastEpisodes.Sighting(
+                player.getUuid(),
+                player.isInvisible(),
+                client.player.squaredDistanceTo(player)));
         }
 
-        // Forget players once they are visible again or no longer in the world.
-        NOTIFIED.retainAll(invisibleIds);
-
-        Set<UUID> fresh = InvisiblePlayerDetector.findNewlyInvisible(nearbyInvisible, NOTIFIED);
-        for (PlayerEntity player : world.getPlayers()) {
-            if (fresh.contains(player.getUuid())) {
+        Set<UUID> fresh = EPISODES.update(ALERT_RADIUS * ALERT_RADIUS, sightings);
+        for (UUID id : fresh) {
+            PlayerEntity player = byId.get(id);
+            if (player != null) {
                 showToast(client, player);
             }
         }
-        NOTIFIED.addAll(fresh);
     }
 
     /**
@@ -97,7 +100,7 @@ public final class InvisiblePlayerNotifier {
     }
 
     public static void clear() {
-        NOTIFIED.clear();
+        EPISODES.reset();
         trackedWorld = null;
     }
 }

@@ -1,5 +1,9 @@
 package org.codersoft.cleaspfabric.client;
 
+import org.codersoft.cleaspfabric.Toggle;
+
+import org.codersoft.cleaspfabric.ModConfig;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,95 +26,98 @@ class ModConfigTest {
     @BeforeEach
     void setUp() {
         configFile = tempDir.resolve("invistags.json");
-        ModConfig.rememberState = true;
-        ModConfig.showInvisibleSkin = false;
-        ModConfig.showInvisibleNametag = false;
-        ModConfig.showInvisibleMobs = false;
-        ModConfig.showInvisibleGear = false;
-        ModConfig.toastInvisiblePlayers = false;
+        resetToDefaults();
     }
 
     @AfterEach
     void reset() {
-        ModConfig.rememberState = true;
-        ModConfig.showInvisibleSkin = false;
-        ModConfig.showInvisibleNametag = false;
-        ModConfig.showInvisibleMobs = false;
-        ModConfig.showInvisibleGear = false;
-        ModConfig.toastInvisiblePlayers = false;
+        resetToDefaults();
+    }
+
+    private static void resetToDefaults() {
+        for (Toggle toggle : Toggle.values()) {
+            ModConfig.set(toggle, toggle.defaultValue());
+        }
     }
 
     @Test
-    void saveWithoutRememberWritesOnlyFlag() throws Exception {
-        ModConfig.rememberState = false;
-        ModConfig.showInvisibleSkin = true;
-        ModConfig.showInvisibleNametag = true;
+    void everyToggleRoundTripsThroughTheFile() {
+        for (Toggle toggle : Toggle.values()) {
+            boolean flipped = !toggle.defaultValue();
+
+            resetToDefaults();
+            ModConfig.set(toggle, flipped);
+            assertTrue(ModConfig.save(configFile), toggle + ": save failed");
+
+            resetToDefaults();
+            assertTrue(ModConfig.load(configFile), toggle + ": load failed");
+            assertEquals(flipped, ModConfig.get(toggle), toggle + ": non-default value did not round-trip");
+
+            resetToDefaults();
+            assertTrue(ModConfig.save(configFile));
+            resetToDefaults();
+            ModConfig.set(toggle, flipped);
+            assertTrue(ModConfig.load(configFile));
+            assertEquals(toggle.defaultValue(), ModConfig.get(toggle),
+                toggle + ": default value did not round-trip");
+        }
+    }
+
+    @Test
+    void saveWithoutRememberWritesOnlyTheFlag() throws Exception {
+        ModConfig.set(Toggle.REMEMBER, false);
+        setAllFeatures(true);
 
         assertTrue(ModConfig.save(configFile));
 
         String json = Files.readString(configFile);
         assertTrue(json.contains("\"rememberState\": false"));
-        assertFalse(json.contains("showInvisibleSkin"));
-        assertFalse(json.contains("showInvisibleNametag"));
-        assertFalse(json.contains("showInvisibleGear"));
-        assertFalse(json.contains("toastInvisiblePlayers"));
+        for (Toggle toggle : Toggle.values()) {
+            if (toggle.persistedWhileRemembering()) {
+                assertFalse(json.contains(toggle.configKey()), toggle + " must not be written");
+            }
+        }
     }
 
     @Test
-    void saveWithRememberWritesValues() throws Exception {
-        ModConfig.rememberState = true;
-        ModConfig.showInvisibleSkin = false;
-        ModConfig.showInvisibleNametag = true;
-        ModConfig.showInvisibleGear = true;
-        ModConfig.toastInvisiblePlayers = true;
-
-        assertTrue(ModConfig.save(configFile));
-
-        String json = Files.readString(configFile);
-        assertTrue(json.contains("\"rememberState\": true"));
-        assertTrue(json.contains("\"showInvisibleSkin\": false"));
-        assertTrue(json.contains("\"showInvisibleNametag\": true"));
-        assertTrue(json.contains("\"showInvisibleGear\": true"));
-        assertTrue(json.contains("\"toastInvisiblePlayers\": true"));
-    }
-
-    @Test
-    void loadWithoutRememberStartsOff() throws Exception {
-        Files.writeString(configFile, "{\"rememberState\": false, \"showInvisibleSkin\": true, \"showInvisibleNametag\": true, \"showInvisibleMobs\": true, \"showInvisibleGear\": true, \"toastInvisiblePlayers\": true}");
+    void loadWithoutRememberStartsEveryFeatureOff() throws Exception {
+        StringBuilder json = new StringBuilder("{\"rememberState\": false");
+        for (Toggle toggle : Toggle.values()) {
+            if (toggle.persistedWhileRemembering()) {
+                json.append(", \"").append(toggle.configKey()).append("\": true");
+            }
+        }
+        json.append('}');
+        Files.writeString(configFile, json.toString());
 
         assertTrue(ModConfig.load(configFile));
-        assertFalse(ModConfig.rememberState);
-        assertFalse(ModConfig.showInvisibleSkin);
-        assertFalse(ModConfig.showInvisibleNametag);
-        assertFalse(ModConfig.showInvisibleMobs);
-        assertFalse(ModConfig.showInvisibleGear);
-        assertFalse(ModConfig.toastInvisiblePlayers);
+        assertFalse(ModConfig.get(Toggle.REMEMBER));
+        for (Toggle toggle : Toggle.values()) {
+            if (toggle.persistedWhileRemembering()) {
+                assertFalse(ModConfig.get(toggle), toggle + " must start off");
+            }
+        }
     }
 
     @Test
-    void loadWithRememberRestoresValues() {
-        ModConfig.rememberState = true;
-        ModConfig.showInvisibleSkin = false;
-        ModConfig.showInvisibleNametag = false;
-        ModConfig.showInvisibleMobs = true;
-        ModConfig.showInvisibleGear = true;
-        ModConfig.toastInvisiblePlayers = true;
+    void loadWithRememberRestoresEveryFeature() {
+        ModConfig.set(Toggle.REMEMBER, true);
+        for (Toggle toggle : Toggle.values()) {
+            if (toggle.persistedWhileRemembering()) {
+                ModConfig.set(toggle, true);
+            }
+        }
         assertTrue(ModConfig.save(configFile));
 
-        ModConfig.rememberState = false;
-        ModConfig.showInvisibleSkin = true;
-        ModConfig.showInvisibleNametag = true;
-        ModConfig.showInvisibleMobs = false;
-        ModConfig.showInvisibleGear = false;
-        ModConfig.toastInvisiblePlayers = false;
-
+        resetToDefaults();
         assertTrue(ModConfig.load(configFile));
-        assertTrue(ModConfig.rememberState);
-        assertFalse(ModConfig.showInvisibleSkin);
-        assertFalse(ModConfig.showInvisibleNametag);
-        assertTrue(ModConfig.showInvisibleMobs);
-        assertTrue(ModConfig.showInvisibleGear);
-        assertTrue(ModConfig.toastInvisiblePlayers);
+
+        assertTrue(ModConfig.get(Toggle.REMEMBER));
+        for (Toggle toggle : Toggle.values()) {
+            if (toggle.persistedWhileRemembering()) {
+                assertTrue(ModConfig.get(toggle), toggle + " must be restored");
+            }
+        }
     }
 
     @Test
@@ -119,23 +127,21 @@ class ModConfigTest {
         assertTrue(ModConfig.load(configFile));
 
         assertTrue(Files.exists(configFile));
-        assertTrue(ModConfig.rememberState);
-        assertFalse(ModConfig.showInvisibleSkin);
-        assertFalse(ModConfig.showInvisibleNametag);
-        assertFalse(ModConfig.showInvisibleMobs);
-        assertFalse(ModConfig.showInvisibleGear);
-        assertFalse(ModConfig.toastInvisiblePlayers);
+        for (Toggle toggle : Toggle.values()) {
+            assertEquals(toggle.defaultValue(), ModConfig.get(toggle), toggle + " default");
+        }
     }
 
     @Test
-    void malformedJsonKeepsDefaults() throws Exception {
+    void malformedJsonKeepsCurrentValues() throws Exception {
         Files.writeString(configFile, "{ this is not json");
+        ModConfig.set(Toggle.SKIN, true);
+        ModConfig.set(Toggle.REMEMBER, false);
 
         assertFalse(ModConfig.load(configFile));
-        assertTrue(ModConfig.rememberState);
-        assertFalse(ModConfig.showInvisibleSkin);
-        assertFalse(ModConfig.showInvisibleNametag);
-        assertFalse(ModConfig.showInvisibleMobs);
+
+        assertTrue(ModConfig.get(Toggle.SKIN));
+        assertFalse(ModConfig.get(Toggle.REMEMBER));
     }
 
     @Test
@@ -143,26 +149,14 @@ class ModConfigTest {
         Files.writeString(configFile, "{\"rememberState\": true, \"showInvisibleSkin\": true}");
 
         assertTrue(ModConfig.load(configFile));
-        assertTrue(ModConfig.rememberState);
-        assertTrue(ModConfig.showInvisibleSkin);
-        assertFalse(ModConfig.showInvisibleNametag);
-        assertFalse(ModConfig.showInvisibleMobs);
-        assertFalse(ModConfig.showInvisibleGear);
-        assertFalse(ModConfig.toastInvisiblePlayers);
-    }
 
-    @Test
-    void gearAndToastRoundTrip() throws Exception {
-        ModConfig.showInvisibleGear = true;
-        ModConfig.toastInvisiblePlayers = true;
-
-        assertTrue(ModConfig.save(configFile));
-        ModConfig.showInvisibleGear = false;
-        ModConfig.toastInvisiblePlayers = false;
-
-        assertTrue(ModConfig.load(configFile));
-        assertTrue(ModConfig.showInvisibleGear);
-        assertTrue(ModConfig.toastInvisiblePlayers);
+        assertTrue(ModConfig.get(Toggle.REMEMBER));
+        assertTrue(ModConfig.get(Toggle.SKIN));
+        for (Toggle toggle : Toggle.values()) {
+            if (toggle != Toggle.REMEMBER && toggle != Toggle.SKIN) {
+                assertEquals(toggle.defaultValue(), ModConfig.get(toggle), toggle + " default");
+            }
+        }
     }
 
     @Test
@@ -170,9 +164,9 @@ class ModConfigTest {
         Files.writeString(configFile, "{\"rememberState\": true, \"showInvisibleNametag\": true, \"foo\": 123}");
 
         assertTrue(ModConfig.load(configFile));
-        assertTrue(ModConfig.rememberState);
-        assertFalse(ModConfig.showInvisibleSkin);
-        assertTrue(ModConfig.showInvisibleNametag);
+
+        assertTrue(ModConfig.get(Toggle.NAMETAG));
+        assertFalse(ModConfig.get(Toggle.SKIN));
     }
 
     @Test
@@ -180,8 +174,16 @@ class ModConfigTest {
         Files.writeString(configFile, "{\"rememberState\": \"yes\", \"showInvisibleSkin\": \"yes\"}");
 
         assertTrue(ModConfig.load(configFile));
-        assertTrue(ModConfig.rememberState);
-        assertFalse(ModConfig.showInvisibleSkin);
-        assertFalse(ModConfig.showInvisibleNametag);
+
+        assertTrue(ModConfig.get(Toggle.REMEMBER));
+        assertFalse(ModConfig.get(Toggle.SKIN));
+    }
+
+    private static void setAllFeatures(boolean value) {
+        for (Toggle toggle : Toggle.values()) {
+            if (toggle.persistedWhileRemembering()) {
+                ModConfig.set(toggle, value);
+            }
+        }
     }
 }
