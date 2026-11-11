@@ -13,8 +13,8 @@ class NametagPolicyTest {
         return NametagPolicy.Subject.player(invisible, self);
     }
 
-    private static NametagPolicy.Subject mob(boolean invisible, boolean customNamed) {
-        return NametagPolicy.Subject.mob(invisible, customNamed);
+    private static NametagPolicy.Subject mob(boolean invisible, boolean customNameVisible) {
+        return NametagPolicy.Subject.mob(invisible, customNameVisible);
     }
 
     @Test
@@ -44,7 +44,7 @@ class NametagPolicyTest {
     }
 
     @Test
-    void customNamedInvisibleMobFollowsTheMobToggle() {
+    void customNameVisibleInvisibleMobFollowsTheMobToggle() {
         NametagPolicy.Decision shown = NametagPolicy.decide(mob(true, true), false, true);
         NametagPolicy.Decision hidden = NametagPolicy.decide(mob(true, true), true, false);
 
@@ -54,7 +54,7 @@ class NametagPolicyTest {
     }
 
     @Test
-    void unnamedInvisibleMobIsNeverLabelled() {
+    void invisibleMobWithoutAVisibleCustomNameIsNeverLabelled() {
         assertFalse(NametagPolicy.decide(mob(true, false), true, true).showLabel());
     }
 

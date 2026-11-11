@@ -7,6 +7,9 @@ import org.codersoft.cleaspfabric.ModConfig;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.mob.ZombieEntity;
+import net.minecraft.util.TypeFilter;
 import org.codersoft.cleaspfabric.client.InvisiblePlayerNotifier;
 import org.codersoft.cleaspfabric.client.InvistagsConfigScreen;
 
@@ -40,7 +43,8 @@ public final class InvisTagsClientGameTest implements FabricClientGameTest {
 
             context.runOnClient(client -> client.setScreen(InvistagsConfigScreen.create(null)));
             context.waitTicks(20);
-            if (!context.computeOnClient(client -> client.currentScreen != null)) {
+            if (!context.computeOnClient(client -> client.currentScreen != null
+                && "InvisTags".equals(client.currentScreen.getTitle().getString()))) {
                 throw new AssertionError("InvisTags config screen did not open");
             }
             context.takeScreenshot("invistags-config");
@@ -59,6 +63,9 @@ public final class InvisTagsClientGameTest implements FabricClientGameTest {
                     + "{CustomName:'Spotted',CustomNameVisible:1b,"
                     + "active_effects:[{id:\"minecraft:invisibility\",duration:1200,show_particles:0b}]}");
             context.waitTicks(20);
+            if (!context.computeOnClient(client -> worldContainsInvisibleZombieNamed(client, "Spotted"))) {
+                throw new AssertionError("no invisible zombie named Spotted in the client world");
+            }
             context.takeScreenshot("invistags-invisible-mob");
 
             // Render a toast with a real skin so the head + name path is exercised
@@ -70,5 +77,18 @@ public final class InvisTagsClientGameTest implements FabricClientGameTest {
                 throw new AssertionError("Toast manager unavailable");
             }
         }
+    }
+
+    private static boolean worldContainsInvisibleZombieNamed(MinecraftClient client, String name) {
+        if (client.world == null || client.player == null) {
+            return false;
+        }
+        return !client.world.getEntitiesByType(
+            TypeFilter.instanceOf(ZombieEntity.class),
+            client.player.getBoundingBox().expand(32.0),
+            zombie -> zombie.isInvisible()
+                && zombie.getCustomName() != null
+                && name.equals(zombie.getCustomName().getString())
+        ).isEmpty();
     }
 }

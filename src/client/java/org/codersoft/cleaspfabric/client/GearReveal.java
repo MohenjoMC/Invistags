@@ -6,7 +6,9 @@ import org.codersoft.cleaspfabric.Toggle;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.item.ItemModelManager;
+import net.minecraft.client.render.entity.model.BipedEntityModel;
 import net.minecraft.client.render.entity.state.BipedEntityRenderState;
+import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
@@ -29,8 +31,9 @@ import java.util.UUID;
  * never cleared by an empty stack received while the player is invisible.
  *
  * <p>The render path only reads the cache: {@link #decorate} writes the cached stacks
- * into the render state, so the live player entity is never modified and there is
- * nothing to restore if rendering fails.
+ * into the render state and {@link #applyArmPoses} lifts the arm that holds one, so the
+ * live player entity is never modified and there is nothing to restore if rendering
+ * fails.
  */
 public final class GearReveal {
 
@@ -62,8 +65,12 @@ public final class GearReveal {
     }
 
     /**
-     * Maintains the cache once per client tick: tracks the world, honours the toggle and
-     * snapshots visible players.
+     * Maintains the cache once per client tick: tracks the world, snapshots visible
+     * players and tops up the entry of an invisible one.
+     *
+     * <p>Disabling the toggle keeps the cache. A player who was visible before the toggle
+     * went off and is invisible and stripped when it comes back on would otherwise lose
+     * the only record of their gear, so off is a pause rather than a reset.
      */
     public static void tick(MinecraftClient client) {
         ClientWorld world = client.world;
@@ -76,7 +83,6 @@ public final class GearReveal {
             trackedWorld = world;
         }
         if (!ModConfig.get(Toggle.GEAR)) {
-            REMEMBERED.clear();
             return;
         }
 
@@ -154,6 +160,47 @@ public final class GearReveal {
     public static void clear() {
         REMEMBERED.clear();
         trackedWorld = null;
+    }
+
+    /**
+     * Lifts the arm of a hand that only looks full because {@link #decorate} filled it.
+     *
+     * <p>The player renderer assigns the arm poses from the live stacks after the biped
+     * extraction, so a revealed sword would hang on a lowered, vanilla-empty arm. This
+     * runs at the end of the player render state update and only touches the pose of a
+     * hand whose live stack is empty while the cache holds something for it.
+     */
+    public static void applyArmPoses(PlayerEntity player, PlayerEntityRenderState state) {
+        if (!ModConfig.get(Toggle.GEAR) || !player.isInvisible()) {
+            return;
+        }
+        Arm mainArm = state.mainArm;
+        applyArmPose(player, state, EquipmentSlot.MAINHAND, mainArm);
+        applyArmPose(player, state, EquipmentSlot.OFFHAND, mainArm.getOpposite());
+    }
+
+    private static void applyArmPose(
+        PlayerEntity player,
+        PlayerEntityRenderState state,
+        EquipmentSlot slot,
+        Arm arm
+    ) {
+        if (!player.getStackInArm(arm).isEmpty()) {
+            return;
+        }
+        EnumMap<EquipmentSlot, ItemStack> remembered = REMEMBERED.get(player.getUuid());
+        if (remembered == null) {
+            return;
+        }
+        ItemStack cached = remembered.get(slot);
+        if (cached == null || cached.isEmpty()) {
+            return;
+        }
+        if (arm == Arm.RIGHT) {
+            state.rightArmPose = BipedEntityModel.ArmPose.ITEM;
+        } else {
+            state.leftArmPose = BipedEntityModel.ArmPose.ITEM;
+        }
     }
 
     private static EnumMap<EquipmentSlot, ItemStack> snapshot(PlayerEntity player) {

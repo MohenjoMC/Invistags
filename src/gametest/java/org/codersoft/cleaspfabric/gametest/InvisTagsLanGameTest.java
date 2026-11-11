@@ -6,9 +6,12 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestDedicatedServerCon
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerConnection;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.PlayerListEntry;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
 import org.codersoft.cleaspfabric.ModConfig;
 import org.codersoft.cleaspfabric.Toggle;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
@@ -25,13 +28,26 @@ import java.util.Properties;
  */
 public final class InvisTagsLanGameTest implements FabricClientGameTest {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger("invistags-gametest");
+
     private static final String BOT_ENV = "INVISTAGS_LAN_BOT";
     private static final int BOT_JOIN_TIMEOUT_TICKS = 3600;
+
+    /** The six slots a player's gear reveal covers. */
+    private static final EquipmentSlot[] BOT_EQUIPMENT = {
+        EquipmentSlot.MAINHAND,
+        EquipmentSlot.OFFHAND,
+        EquipmentSlot.FEET,
+        EquipmentSlot.LEGS,
+        EquipmentSlot.CHEST,
+        EquipmentSlot.HEAD
+    };
 
     @Override
     public void runTest(ClientGameTestContext context) {
         String bot = System.getenv(BOT_ENV);
         if (bot == null || bot.isBlank()) {
+            LOGGER.info("Skipping two-player gear-reveal test: {} is not set", BOT_ENV);
             return;
         }
 
@@ -64,7 +80,7 @@ public final class InvisTagsLanGameTest implements FabricClientGameTest {
             context.waitTicks(20);
 
             server.runCommand("time set day");
-            server.runCommand("execute at @p run tp " + bot + " ^ ^ ^4");
+            server.runCommand("execute at @a[name=!" + bot + ",limit=1] run tp " + bot + " ^ ^ ^4");
             giveGear(server, bot);
             context.waitTicks(20);
             context.takeScreenshot("lan-bot-visible");
@@ -81,17 +97,20 @@ public final class InvisTagsLanGameTest implements FabricClientGameTest {
             }
             context.takeScreenshot("lan-bot-invisible");
 
-            // The server strips the equipment. Gear reveal should still show what the
-            // client cached; turning the toggle off proves the gear came from the cache.
+            // The server strips the equipment. The live entity is what the server sent,
+            // so the client's stacks must now be empty; anything still drawn comes from
+            // GearReveal's cache decorating the render state, not from the entity.
             stripGear(server, bot);
             context.waitTicks(20);
+            if (!context.computeOnClient(client -> botEquipmentIsEmpty(client, bot))) {
+                throw new AssertionError(bot + " still has live equipment after the server stripped it");
+            }
             context.takeScreenshot("lan-bot-stripped-gear-on");
 
             context.runOnClient(client -> ModConfig.set(Toggle.GEAR, false));
             context.waitTicks(20);
             context.takeScreenshot("lan-bot-stripped-gear-off");
 
-            context.waitFor(client -> playerListContains(client, bot), BOT_JOIN_TIMEOUT_TICKS);
             if (!context.computeOnClient(client -> botEntity(client, bot) != null)) {
                 throw new AssertionError("Two-player world never contained " + bot);
             }
@@ -104,6 +123,7 @@ public final class InvisTagsLanGameTest implements FabricClientGameTest {
         replace(server, bot, "armor.legs", "minecraft:diamond_leggings");
         replace(server, bot, "armor.feet", "minecraft:diamond_boots");
         replace(server, bot, "weapon.mainhand", "minecraft:diamond_sword");
+        replace(server, bot, "weapon.offhand", "minecraft:shield");
     }
 
     private static void stripGear(TestDedicatedServerContext server, String bot) {
@@ -112,6 +132,7 @@ public final class InvisTagsLanGameTest implements FabricClientGameTest {
         replace(server, bot, "armor.legs", "minecraft:air");
         replace(server, bot, "armor.feet", "minecraft:air");
         replace(server, bot, "weapon.mainhand", "minecraft:air");
+        replace(server, bot, "weapon.offhand", "minecraft:air");
     }
 
     private static void replace(
@@ -145,5 +166,18 @@ public final class InvisTagsLanGameTest implements FabricClientGameTest {
             }
         }
         return null;
+    }
+
+    private static boolean botEquipmentIsEmpty(MinecraftClient client, String name) {
+        PlayerEntity bot = botEntity(client, name);
+        if (bot == null) {
+            return false;
+        }
+        for (EquipmentSlot slot : BOT_EQUIPMENT) {
+            if (!bot.getEquippedStack(slot).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 }

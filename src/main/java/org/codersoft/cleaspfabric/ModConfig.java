@@ -59,15 +59,21 @@ public final class ModConfig {
         if (load(path)) {
             LOGGER.info("Config loaded from {}", path);
         } else {
-            LOGGER.warn("Could not read invistags.json, using defaults");
+            LOGGER.warn("Could not read invistags.json, current values kept");
         }
     }
 
-    /** Writes the config file in the Fabric config directory. */
-    public static void save() {
-        if (!save(getConfigPath())) {
+    /**
+     * Writes the config file in the Fabric config directory.
+     *
+     * @return true if the file was written successfully
+     */
+    public static boolean save() {
+        boolean saved = save(getConfigPath());
+        if (!saved) {
             LOGGER.warn("Could not save invistags.json");
         }
+        return saved;
     }
 
     /**
@@ -98,6 +104,7 @@ public final class ModConfig {
                 loaded.put(toggle, readValue(obj, toggle, remember));
             }
         } catch (Exception e) {
+            LOGGER.warn("Could not read config from {}", path, e);
             return false;
         }
 
@@ -145,6 +152,7 @@ public final class ModConfig {
             Files.writeString(path, GSON.toJson(obj) + "\n");
             return true;
         } catch (IOException e) {
+            LOGGER.warn("Could not write config to {}", path, e);
             return false;
         }
     }

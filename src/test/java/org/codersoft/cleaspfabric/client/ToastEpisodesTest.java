@@ -60,6 +60,40 @@ class ToastEpisodesTest {
     }
 
     @Test
+    void oneAbsentTickDoesNotReArmThePlayer() {
+        assertEquals(Set.of(HIDDEN), episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))));
+
+        assertTrue(episodes.update(RADIUS_SQUARED, List.of()).isEmpty());
+        assertTrue(episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))).isEmpty());
+    }
+
+    @Test
+    void absenceUpToTheGraceKeepsTheEpisode() {
+        assertEquals(Set.of(HIDDEN), episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))));
+
+        advanceAbsent(ToastEpisodes.ABSENCE_GRACE_TICKS);
+        assertTrue(episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))).isEmpty());
+    }
+
+    @Test
+    void absencePastTheGraceReArmsThePlayer() {
+        assertEquals(Set.of(HIDDEN), episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))));
+
+        advanceAbsent(ToastEpisodes.ABSENCE_GRACE_TICKS + 1);
+        assertEquals(Set.of(HIDDEN), episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))));
+    }
+
+    @Test
+    void graceCountsConsecutiveAbsentTicksOnly() {
+        assertEquals(Set.of(HIDDEN), episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))));
+
+        advanceAbsent(ToastEpisodes.ABSENCE_GRACE_TICKS);
+        assertTrue(episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))).isEmpty());
+        advanceAbsent(ToastEpisodes.ABSENCE_GRACE_TICKS);
+        assertTrue(episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))).isEmpty());
+    }
+
+    @Test
     void becomingVisibleReArmsThePlayer() {
         assertEquals(Set.of(HIDDEN), episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))));
 
@@ -71,7 +105,7 @@ class ToastEpisodesTest {
     void leavingTheWorldReArmsThePlayer() {
         assertEquals(Set.of(HIDDEN), episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))));
 
-        assertTrue(episodes.update(RADIUS_SQUARED, List.of(visible(OTHER, 1.0))).isEmpty());
+        advanceAbsent(ToastEpisodes.ABSENCE_GRACE_TICKS + 1);
         assertEquals(Set.of(HIDDEN), episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))));
     }
 
@@ -83,6 +117,7 @@ class ToastEpisodesTest {
     @Test
     void resetClearsEpisodeState() {
         assertEquals(Set.of(HIDDEN), episodes.update(RADIUS_SQUARED, List.of(invisible(HIDDEN, 1.0))));
+        assertTrue(episodes.update(RADIUS_SQUARED, List.of()).isEmpty());
 
         episodes.reset();
 
@@ -97,6 +132,13 @@ class ToastEpisodesTest {
     @Test
     void emptySightingsReturnsEmpty() {
         assertTrue(episodes.update(RADIUS_SQUARED, List.of()).isEmpty());
+    }
+
+    /** Runs {@code ticks} ticks in which no player is sighted at all. */
+    private void advanceAbsent(int ticks) {
+        for (int tick = 0; tick < ticks; tick++) {
+            assertTrue(episodes.update(RADIUS_SQUARED, List.of()).isEmpty(), "tick " + tick);
+        }
     }
 
     private static ToastEpisodes.Sighting invisible(UUID id, double distanceSquared) {

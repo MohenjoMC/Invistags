@@ -12,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -52,10 +51,20 @@ class ToggleTest {
         }
     }
 
+    /**
+     * {@code persistedWhileRemembering} is derived from the constant, so this pins the
+     * catalogue contract: the remember flag itself is persisted unconditionally and
+     * every other toggle is gated by it.
+     */
     @Test
     void rememberIsTheOnlyUngatedToggle() {
+        assertFalse(Toggle.REMEMBER.persistedWhileRemembering(),
+            "the remember flag must be written even when it is off");
         for (Toggle toggle : Toggle.values()) {
-            assertEquals(toggle != Toggle.REMEMBER, toggle.persistedWhileRemembering(), toggle.toString());
+            if (toggle != Toggle.REMEMBER) {
+                assertTrue(toggle.persistedWhileRemembering(),
+                    toggle + " must only be persisted while rememberState is on");
+            }
         }
     }
 

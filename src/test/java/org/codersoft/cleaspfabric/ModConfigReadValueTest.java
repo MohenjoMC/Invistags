@@ -38,6 +38,13 @@ class ModConfigReadValueTest {
     }
 
     @Test
+    void rememberOffWinsOverTheRememberDefault() {
+        // REMEMBER defaults to on, so only the remember-off branch can return false here.
+        assertFalse(ModConfig.readValue(new JsonObject(), Toggle.REMEMBER, false),
+            "remember-off must ignore the declared default");
+    }
+
+    @Test
     void rememberOffIgnoresAStoredFeatureValue() {
         JsonObject json = new JsonObject();
         json.addProperty(Toggle.SKIN.configKey(), true);

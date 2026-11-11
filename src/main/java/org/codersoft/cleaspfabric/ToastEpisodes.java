@@ -1,7 +1,10 @@
 package org.codersoft.cleaspfabric;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -10,19 +13,27 @@ import java.util.UUID;
  * <p>
  * A player is announced once per invisibility episode. Episodes are keyed by
  * player id and stay open for as long as that id is reported invisible, so
- * walking out of and back into range does not raise a second toast. An episode
- * ends — and the player becomes eligible again — as soon as the id is reported
- * visible or is no longer present in the sightings at all (for example because
- * the player left the world). Spectators and the viewer are never announced.
- * Players farther away than the supplied radius are not announced until they
- * come within range.
+ * walking out of and back into range does not raise a second toast. An id that
+ * is missing from the sightings altogether — for example because the player
+ * momentarily left entity-tracking range — keeps its episode for up to
+ * {@link #ABSENCE_GRACE_TICKS} consecutive ticks and only then re-arms; the
+ * grace is what separates "briefly untracked" from "left the world". An id
+ * reported visible re-arms immediately. Players farther away than the supplied
+ * radius are not announced until they come within range.
  * <p>
  * Kept free of Minecraft types so it can be unit tested without launching a
  * client.
  */
 public final class ToastEpisodes {
 
+    /**
+     * Consecutive ticks an announced id may be missing from the sightings before
+     * its episode ends and the player becomes eligible for a new toast.
+     */
+    public static final int ABSENCE_GRACE_TICKS = 100;
+
     private final Set<UUID> announced = new HashSet<>();
+    private final Map<UUID, Integer> absentTicks = new HashMap<>();
 
     /**
      * A single player as seen by the notifier during one tick.
@@ -40,30 +51,44 @@ public final class ToastEpisodes {
      * not returned again until their episode ends.
      *
      * @param radiusSquared squared alert radius, inclusive
-     * @param sightings     this tick's revealable players, may be {@code null}
+     * @param sightings     this tick's revealable players, may be {@code null} or empty
      * @return the ids that need a toast now, empty when there are none
      */
     public Set<UUID> update(double radiusSquared, Collection<Sighting> sightings) {
         Set<UUID> stillInvisible = new HashSet<>();
         Set<UUID> fresh = new HashSet<>();
-        if (sightings == null || sightings.isEmpty()) {
-            announced.clear();
-            return fresh;
+
+        if (sightings != null) {
+            for (Sighting sighting : sightings) {
+                if (sighting == null || sighting.id() == null) {
+                    continue;
+                }
+                UUID id = sighting.id();
+                if (!sighting.invisible()) {
+                    // Seen and visible: the episode is over, no grace applies.
+                    announced.remove(id);
+                    absentTicks.remove(id);
+                    continue;
+                }
+                stillInvisible.add(id);
+                absentTicks.remove(id);
+                if (sighting.distanceSquared() <= radiusSquared && announced.add(id)) {
+                    fresh.add(id);
+                }
+            }
         }
 
-        for (Sighting sighting : sightings) {
-            if (sighting == null || sighting.id() == null || !sighting.invisible()) {
+        // Ids missing from this tick start, or continue, their absence count.
+        for (UUID id : new ArrayList<>(announced)) {
+            if (stillInvisible.contains(id)) {
                 continue;
             }
-            UUID id = sighting.id();
-            stillInvisible.add(id);
-            if (sighting.distanceSquared() <= radiusSquared && announced.add(id)) {
-                fresh.add(id);
+            int absent = absentTicks.merge(id, 1, Integer::sum);
+            if (absent > ABSENCE_GRACE_TICKS) {
+                announced.remove(id);
+                absentTicks.remove(id);
             }
         }
-
-        // Forget episodes that ended so a later invisibility starts a fresh one.
-        announced.retainAll(stillInvisible);
         return fresh;
     }
 
@@ -72,5 +97,6 @@ public final class ToastEpisodes {
      */
     public void reset() {
         announced.clear();
+        absentTicks.clear();
     }
 }

@@ -172,11 +172,25 @@ class ModConfigTest {
     @Test
     void wrongValueTypeIsIgnored() throws Exception {
         Files.writeString(configFile, "{\"rememberState\": \"yes\", \"showInvisibleSkin\": \"yes\"}");
+        // Remember defaults to on, so turn it off first: a wrong-typed key must keep the
+        // current value instead of snapping back to the declared default.
+        ModConfig.set(Toggle.REMEMBER, false);
+        ModConfig.set(Toggle.SKIN, true);
 
         assertTrue(ModConfig.load(configFile));
 
-        assertTrue(ModConfig.get(Toggle.REMEMBER));
-        assertFalse(ModConfig.get(Toggle.SKIN));
+        assertFalse(ModConfig.get(Toggle.REMEMBER),
+            "a wrong-typed rememberState must keep the current value");
+        assertFalse(ModConfig.get(Toggle.SKIN),
+            "a wrong-typed feature value must not be read as true");
+    }
+
+    @Test
+    void rememberIsTheOnlyToggleOnByDefault() {
+        for (Toggle toggle : Toggle.values()) {
+            assertEquals(toggle == Toggle.REMEMBER, toggle.defaultValue(),
+                toggle + ": only rememberState may default to on");
+        }
     }
 
     private static void setAllFeatures(boolean value) {

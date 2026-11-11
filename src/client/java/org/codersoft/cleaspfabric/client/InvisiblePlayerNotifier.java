@@ -40,7 +40,8 @@ public final class InvisiblePlayerNotifier {
 
     public static void tick(MinecraftClient client) {
         if (!ModConfig.get(Toggle.TOAST)) {
-            clear();
+            // Keep the episodes: re-enabling must not re-announce players who never
+            // became visible in the meantime.
             return;
         }
 

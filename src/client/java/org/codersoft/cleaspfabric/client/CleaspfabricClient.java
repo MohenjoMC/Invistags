@@ -111,9 +111,10 @@ public class CleaspfabricClient implements ClientModInitializer {
 
     private static int apply(Toggle toggle, boolean value, FabricClientCommandSource source) {
         ModConfig.set(toggle, value);
-        ModConfig.save();
+        boolean saved = ModConfig.save();
         source.sendFeedback(Text.literal(
-            toggle.feedbackLabel() + " set to " + onOff(value) + " §7(saved)"));
+            toggle.feedbackLabel() + " set to " + onOff(value) + " "
+                + persistenceNote(saved, toggle != Toggle.REMEMBER)));
         return 1;
     }
 
@@ -135,16 +136,26 @@ public class CleaspfabricClient implements ClientModInitializer {
         return value ? "§aON" : "§cOFF";
     }
 
+    private static String persistenceNote(boolean saved, boolean gatedByRemember) {
+        if (!saved) {
+            return "§7(save failed)";
+        }
+        if (gatedByRemember && !ModConfig.get(Toggle.REMEMBER)) {
+            return "§7(not saved: remember is off)";
+        }
+        return "§7(saved)";
+    }
+
     private static void toggleGroup(MinecraftClient client) {
         boolean enabled = !KEYBIND_GROUP.stream().allMatch(ModConfig::get);
         KEYBIND_GROUP.forEach(toggle -> ModConfig.set(toggle, enabled));
-        ModConfig.save();
+        boolean saved = ModConfig.save();
 
         if (client.player != null) {
             client.player.sendMessage(Text.translatable(
                 "message.invistags.toggled",
                 Text.translatable(enabled ? "message.invistags.on" : "message.invistags.off")
-            ), true);
+            ).append(" " + persistenceNote(saved, true)), true);
         }
     }
 }

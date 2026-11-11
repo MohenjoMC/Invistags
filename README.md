@@ -4,7 +4,7 @@
 
 A **client-side Fabric mod** that forces nametags, player skins, armour and held items of invisible players to render, and raises a toast with the player's name and head when an invisible player comes near. All features are toggleable at runtime via the `/invis` command.
 
-> **Stable 1.3.x.** Gear reveal passed unit tests and a two-player multiplayer test over the network. The invisible-player toast replaces the removed vanished-player flag.
+> **Stable 1.3.x.** Gear reveal passed a two-player network test. The invisible-player toast replaces the removed vanished-player flag.
 
 Built for **Minecraft 1.21.11**, **26.1.2**, **26.2**, and **26.3**.
 
@@ -199,27 +199,35 @@ src/
 │       ├── fabric.mod.json                 — Mod metadata
 │       ├── cleaspfabric.mixins.json        — Main source set mixins (reserved)
 │       └── assets/invistags/icon.png       — Mod icon
-└── client/                                    # Minecraft/presentation adapters, the only part a version branch rewrites
-    ├── java/org/codersoft/cleaspfabric/
-    │   ├── client/
-    │   │   ├── CleaspfabricClient.java     — Client entrypoint, /invis command, keybinds
-    │   │   ├── CleaspfabricDataGenerator.java
-    │   │   ├── GearReveal.java             — Last-seen gear cache + render-state decoration
-    │   │   ├── InvistagsConfigScreen.java  — Shared Cloth Config screen
-    │   │   ├── InvisiblePlayerNotifier.java— Per-tick proximity tracking + toasts
-    │   │   ├── InvisiblePlayerToast.java   — System toast with a player-head icon
-    │   │   ├── ModMenuIntegration.java     — Mod Menu entrypoint
-    │   │   └── PlayerRoster.java           — Which players the reveal/alert rules may consider
-    │   └── mixin/client/
-    │       ├── EntityRendererMixin.java    — Forces hasLabel() to true via NametagPolicy
-    │       ├── InvisibilityRenderMixin.java— Restores skin opacity
-    │       ├── LabelSneakMixin.java        — Adds the through-block label copy while sneaking
-    │       └── PlayerGearMixin.java        — Fills render-state gear from the cache
+├── client/                                    # Minecraft/presentation adapters, the only part a version branch rewrites
+│   ├── java/org/codersoft/cleaspfabric/
+│   │   ├── client/
+│   │   │   ├── CleaspfabricClient.java     — Client entrypoint, /invis command, keybinds
+│   │   │   ├── CleaspfabricDataGenerator.java
+│   │   │   ├── GearReveal.java             — Last-seen gear cache + render-state decoration
+│   │   │   ├── InvistagsConfigScreen.java  — Shared Cloth Config screen
+│   │   │   ├── InvisiblePlayerNotifier.java— Per-tick proximity tracking + toasts
+│   │   │   ├── InvisiblePlayerToast.java   — System toast with a player-head icon
+│   │   │   ├── ModMenuIntegration.java     — Mod Menu entrypoint
+│   │   │   └── PlayerRoster.java           — Which players the reveal/alert rules may consider
+│   │   └── mixin/client/
+│   │       ├── BipedGearMixin.java              — Fills render-state gear from the last-seen cache
+│   │       ├── LabelSneakMixin.java             — Keeps the through-block label copy while sneaking
+│   │       ├── LivingEntityLabelMixin.java      — Lets the invisibility half of hasLabel() answer true
+│   │       ├── LivingEntityVisibilityMixin.java — Draws the model of an invisible entity again
+│   │       ├── PlayerArmPoseMixin.java          — Lifts the arms that hold the revealed hand items
+│   │       └── RenderStateFlagMixin.java        — Keeps the extracted invisibility on the render state
+│   └── resources/
+│       ├── assets/invistags/lang/en_us.json — Keybind/config strings
+│       └── cleaspfabric.client.mixins.json — Client mixin registration
+├── test/                                      # Headless unit tests, no Minecraft launch required
+│   └── java/org/codersoft/cleaspfabric/       — Toggle catalogue, config persistence, policy and toast rules
+└── gametest/                                  # Optional client gametest harness
+    ├── java/org/codersoft/cleaspfabric/gametest/
+    │   ├── InvisTagsClientGameTest.java   — Boots a world, opens the config screen, exercises the mixins
+    │   └── InvisTagsLanGameTest.java      — Two-player gear-reveal test against a dedicated server
     └── resources/
-        ├── assets/invistags/lang/en_us.json — Keybind/config strings
-        └── cleaspfabric.client.mixins.json — Client mixin registration
-
-src/gametest/                                — Optional client gametest harness
+        └── fabric.mod.json                — Gametest mod metadata
 ```
 
 ## Development

@@ -16,7 +16,7 @@
   "config.invistags.toastInvisiblePlayers.tooltip": "Shows a toast with the player's name and head the first time an invisible player comes within 64 blocks. Each invisibility is announced once.",
   "config.invistags.rememberState": "Remember state between launches",
   "config.invistags.rememberState.tooltip": "On by default. When off, skins, nametags, mobs, gear and the invisible-player toast always start disabled. Turn it on to keep the current toggles across restarts.",
-  "config.invistags.hint": "Keys can be changed in Options > Controls > Key Binds. Mob reveal, gear reveal and the invisible-player toast are config/command only.",
+  "config.invistags.hint": "Keys can be changed in Options > Controls > Key Binds. Mob reveal and the invisible-player toast are config/command only.",
   "message.invistags.toast.invisible": "is invisible nearby",
   "message.invistags.toggled": "InvisTags: %s",
   "message.invistags.on": "ON",

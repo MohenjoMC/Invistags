@@ -15,19 +15,20 @@ public final class NametagPolicy {
     /**
      * What kind of entity the label belongs to, as far as the rule cares.
      *
-     * @param player      a player entity rather than a mob
-     * @param invisible   currently has the invisibility effect
-     * @param self        the local player
-     * @param customNamed has a custom name (mobs only)
+     * @param player            a player entity rather than a mob
+     * @param invisible         currently has the invisibility effect
+     * @param self              the local player
+     * @param customNameVisible has a custom name that vanilla would show (mobs only); a
+     *                          custom name that is hidden must not force a label
      */
-    public record Subject(boolean player, boolean invisible, boolean self, boolean customNamed) {
+    public record Subject(boolean player, boolean invisible, boolean self, boolean customNameVisible) {
 
         public static Subject player(boolean invisible, boolean self) {
             return new Subject(true, invisible, self, false);
         }
 
-        public static Subject mob(boolean invisible, boolean customNamed) {
-            return new Subject(false, invisible, false, customNamed);
+        public static Subject mob(boolean invisible, boolean customNameVisible) {
+            return new Subject(false, invisible, false, customNameVisible);
         }
     }
 
@@ -59,7 +60,7 @@ public final class NametagPolicy {
             }
             return Decision.shown(true);
         }
-        if (!mobsEnabled || !subject.customNamed()) {
+        if (!mobsEnabled || !subject.customNameVisible()) {
             return Decision.HIDDEN;
         }
         return Decision.shown(false);

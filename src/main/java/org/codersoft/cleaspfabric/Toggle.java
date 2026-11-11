@@ -12,12 +12,12 @@ package org.codersoft.cleaspfabric;
  */
 public enum Toggle {
 
-    SKIN("skin", "showInvisibleSkin", false, "Skin", "Skin visibility", true),
-    NAMETAG("nametag", "showInvisibleNametag", false, "Nametag", "Nametag visibility", true),
-    MOBS("mobs", "showInvisibleMobs", false, "Mobs", "Mob reveal", true),
-    GEAR("gear", "showInvisibleGear", false, "Gear", "Gear reveal", true),
-    TOAST("toast", "toastInvisiblePlayers", false, "Toast on invisible players", "Invisible player toast", true),
-    REMEMBER("remember", "rememberState", true, "Remember state", "Remember state", false);
+    SKIN("skin", "showInvisibleSkin", false, "Skin", "Skin visibility"),
+    NAMETAG("nametag", "showInvisibleNametag", false, "Nametag", "Nametag visibility"),
+    MOBS("mobs", "showInvisibleMobs", false, "Mobs", "Mob reveal"),
+    GEAR("gear", "showInvisibleGear", false, "Gear", "Gear reveal"),
+    TOAST("toast", "toastInvisiblePlayers", false, "Toast on invisible players", "Invisible player toast"),
+    REMEMBER("remember", "rememberState", true, "Remember state", "Remember state");
 
     private static final String CONFIG_PREFIX = "config.invistags.";
 
@@ -26,20 +26,17 @@ public enum Toggle {
     private final boolean defaultValue;
     private final String statusLabel;
     private final String feedbackLabel;
-    private final boolean persistedWhileRemembering;
 
     Toggle(String commandName,
            String configKey,
            boolean defaultValue,
            String statusLabel,
-           String feedbackLabel,
-           boolean persistedWhileRemembering) {
+           String feedbackLabel) {
         this.commandName = commandName;
         this.configKey = configKey;
         this.defaultValue = defaultValue;
         this.statusLabel = statusLabel;
         this.feedbackLabel = feedbackLabel;
-        this.persistedWhileRemembering = persistedWhileRemembering;
     }
 
     /** Brigadier literal, e.g. {@code /invis skin}. */
@@ -72,7 +69,7 @@ public enum Toggle {
      * {@link #REMEMBER} is on. The remember flag itself is always persisted.
      */
     public boolean persistedWhileRemembering() {
-        return persistedWhileRemembering;
+        return this != REMEMBER;
     }
 
     /** Cloth Config title key. */

@@ -72,10 +72,14 @@ test {
 }
 
 // The LAN gametest joins a bot from another machine, which the harness's network
-// synchronizer would reject as unsynchronized packet traffic.
+// synchronizer would reject as unsynchronized packet traffic. Checked in doFirst so a
+// variable exported after the daemon started is still seen, and so the JVM args of a
+// plain run are not fixed by the daemon's environment.
 tasks.matching { it.name == "runClientGameTest" }.configureEach {
-    if (System.getenv("INVISTAGS_LAN_BOT") != null) {
-        jvmArgs "-Dfabric.client.gametest.disableNetworkSynchronizer=true"
+    doFirst {
+        if (System.getenv("INVISTAGS_LAN_BOT") != null) {
+            jvmArgs "-Dfabric.client.gametest.disableNetworkSynchronizer=true"
+        }
     }
 }
 
