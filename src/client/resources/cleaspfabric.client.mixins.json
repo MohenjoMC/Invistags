@@ -5,11 +5,12 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "cleaspfabric.client.mixins.refmap.json",
   "client": [
-    "EntityRendererMixin",
-    "LabelRenderMixin",
+    "HumanoidGearMixin",
     "LabelSneakMixin",
-    "InvisibilityRenderMixin",
-    "PlayerGearMixin"
+    "LivingEntityLabelMixin",
+    "LivingEntityVisibilityMixin",
+    "PlayerArmPoseMixin",
+    "RenderStateFlagMixin"
   ],
   "injectors": {
     "defaultRequire": 1

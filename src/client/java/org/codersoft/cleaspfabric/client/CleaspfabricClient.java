@@ -2,30 +2,41 @@ package org.codersoft.cleaspfabric.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import org.codersoft.cleaspfabric.ModConfig;
+import org.codersoft.cleaspfabric.Toggle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CleaspfabricClient implements ClientModInitializer {
 
-    public static final Logger LOGGER = LoggerFactory.getLogger("invisnametag");
+    public static final Logger LOGGER = LoggerFactory.getLogger("invistags");
+
+    /** The toggles the {@code I} keybind flips together. */
+    private static final Set<Toggle> KEYBIND_GROUP =
+        EnumSet.of(Toggle.SKIN, Toggle.NAMETAG, Toggle.GEAR);
 
     private static KeyMapping toggleKey;
     private static KeyMapping configKey;
 
     @Override
     public void onInitializeClient() {
-        LOGGER.info("InvisNametag loaded. Invisible players can no longer hide.");
+        LOGGER.info("InvisTags loaded. Invisible players can no longer hide.");
         ModConfig.load();
 
         KeyMapping.Category category = KeyMapping.Category.register(
@@ -47,182 +58,100 @@ public class CleaspfabricClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             GearReveal.tick(client);
-            VanishedPlayers.tick(client);
+            InvisiblePlayerNotifier.tick(client);
             while (toggleKey.consumeClick()) {
-                toggleEverything(client);
+                toggleGroup(client);
             }
             while (configKey.consumeClick()) {
-                client.setScreenAndShow(InvistagsConfigScreen.create(null));
+                client.setScreenAndShow(InvistagsConfigScreen.create(client.gui.screen()));
             }
         });
 
+        registerCommand();
+    }
+
+    private static void registerCommand() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommands.literal("invis")
-                .then(ClientCommands.literal("config")
-                    .executes(context -> {
-                        Minecraft client = Minecraft.getInstance();
-                        client.setScreenAndShow(InvistagsConfigScreen.create(null));
-                        return 1;
-                    })
-                )
-                .then(ClientCommands.literal("skin")
-                    .executes(context -> {
-                        boolean current = ModConfig.showInvisibleSkin;
-                        context.getSource().sendFeedback(Component.literal(
-                            "Skin visibility: " + (current ? "§aON" : "§cOFF")));
-                        return 1;
-                    })
-                    .then(ClientCommands.argument("value", BoolArgumentType.bool())
-                        .executes(context -> {
-                            boolean value = BoolArgumentType.getBool(context, "value");
-                            ModConfig.showInvisibleSkin = value;
-                            ModConfig.save();
-                            context.getSource().sendFeedback(Component.literal(
-                                "Skin visibility set to " + (value ? "§aON" : "§cOFF") + " §7(saved)"));
-                            return 1;
-                        })
-                    )
-                )
-                .then(ClientCommands.literal("nametag")
-                    .executes(context -> {
-                        boolean current = ModConfig.showInvisibleNametag;
-                        context.getSource().sendFeedback(Component.literal(
-                            "Nametag visibility: " + (current ? "§aON" : "§cOFF")));
-                        return 1;
-                    })
-                    .then(ClientCommands.argument("value", BoolArgumentType.bool())
-                        .executes(context -> {
-                            boolean value = BoolArgumentType.getBool(context, "value");
-                            ModConfig.showInvisibleNametag = value;
-                            ModConfig.save();
-                            context.getSource().sendFeedback(Component.literal(
-                                "Nametag visibility set to " + (value ? "§aON" : "§cOFF") + " §7(saved)"));
-                            return 1;
-                        })
-                    )
-                )
-                .then(ClientCommands.literal("mobs")
-                    .executes(context -> {
-                        boolean current = ModConfig.showInvisibleMobs;
-                        context.getSource().sendFeedback(Component.literal(
-                            "Mob reveal: " + (current ? "§aON" : "§cOFF")));
-                        return 1;
-                    })
-                    .then(ClientCommands.argument("value", BoolArgumentType.bool())
-                        .executes(context -> {
-                            boolean value = BoolArgumentType.getBool(context, "value");
-                            ModConfig.showInvisibleMobs = value;
-                            ModConfig.save();
-                            context.getSource().sendFeedback(Component.literal(
-                                "Mob reveal set to " + (value ? "§aON" : "§cOFF") + " §7(saved)"));
-                            return 1;
-                        })
-                    )
-                )
-                .then(ClientCommands.literal("gear")
-                    .executes(context -> {
-                        boolean current = ModConfig.showInvisibleGear;
-                        context.getSource().sendFeedback(Component.literal(
-                            "Gear reveal: " + (current ? "§aON" : "§cOFF")));
-                        return 1;
-                    })
-                    .then(ClientCommands.argument("value", BoolArgumentType.bool())
-                        .executes(context -> {
-                            boolean value = BoolArgumentType.getBool(context, "value");
-                            ModConfig.showInvisibleGear = value;
-                            ModConfig.save();
-                            context.getSource().sendFeedback(Component.literal(
-                                "Gear reveal set to " + (value ? "§aON" : "§cOFF") + " §7(saved)"));
-                            return 1;
-                        })
-                    )
-                )
-                .then(ClientCommands.literal("vanished")
-                    .executes(context -> {
-                        boolean current = ModConfig.flagVanishedPlayers;
-                        List<String> names = VanishedPlayers.flaggedNames(Minecraft.getInstance());
-                        String flagged = names.isEmpty()
-                            ? " §7(none currently flagged)"
-                            : " §7(flagged: " + String.join(", ", names) + ")";
-                        context.getSource().sendFeedback(Component.literal(
-                            "Vanished flag: " + (current ? "§aON" : "§cOFF") + flagged));
-                        return 1;
-                    })
-                    .then(ClientCommands.literal("list")
-                        .executes(context -> {
-                            List<String> names = VanishedPlayers.flaggedNames(Minecraft.getInstance());
-                            context.getSource().sendFeedback(Component.literal(names.isEmpty()
-                                ? "§7No vanished players currently flagged."
-                                : "§cVanished players: §f" + String.join(", ", names)));
-                            return 1;
-                        })
-                    )
-                    .then(ClientCommands.argument("value", BoolArgumentType.bool())
-                        .executes(context -> {
-                            boolean value = BoolArgumentType.getBool(context, "value");
-                            ModConfig.flagVanishedPlayers = value;
-                            ModConfig.save();
-                            context.getSource().sendFeedback(Component.literal(
-                                "Vanished flag set to " + (value ? "§aON" : "§cOFF") + " §7(saved)"));
-                            return 1;
-                        })
-                    )
-                )
-                .then(ClientCommands.literal("remember")
-                    .executes(context -> {
-                        boolean current = ModConfig.rememberState;
-                        context.getSource().sendFeedback(Component.literal(
-                            "Remember state: " + (current ? "§aON" : "§cOFF")));
-                        return 1;
-                    })
-                    .then(ClientCommands.argument("value", BoolArgumentType.bool())
-                        .executes(context -> {
-                            boolean value = BoolArgumentType.getBool(context, "value");
-                            ModConfig.rememberState = value;
-                            ModConfig.save();
-                            context.getSource().sendFeedback(Component.literal(
-                                "Remember state set to " + (value ? "§aON" : "§cOFF") + " §7(saved)"));
-                            return 1;
-                        })
-                    )
-                )
+            LiteralArgumentBuilder<FabricClientCommandSource> root =
+                ClientCommands.literal("invis");
+
+            root.then(ClientCommands.literal("config")
                 .executes(context -> {
-                    context.getSource().sendFeedback(Component.literal(
-                        "§6=== InvisTags Config ==="));
-                    context.getSource().sendFeedback(Component.literal(
-                        "Skin: " + (ModConfig.showInvisibleSkin ? "§aON" : "§cOFF")));
-                    context.getSource().sendFeedback(Component.literal(
-                        "Nametag: " + (ModConfig.showInvisibleNametag ? "§aON" : "§cOFF")));
-                    context.getSource().sendFeedback(Component.literal(
-                        "Mobs: " + (ModConfig.showInvisibleMobs ? "§aON" : "§cOFF")));
-                    context.getSource().sendFeedback(Component.literal(
-                        "Gear: " + (ModConfig.showInvisibleGear ? "§aON" : "§cOFF")));
-                    context.getSource().sendFeedback(Component.literal(
-                        "Vanished flag: " + (ModConfig.flagVanishedPlayers ? "§aON" : "§cOFF")));
-                    context.getSource().sendFeedback(Component.literal(
-                        "Remember state: " + (ModConfig.rememberState ? "§aON" : "§cOFF")));
-                    context.getSource().sendFeedback(Component.literal(
-                        "§7Use /invis skin|nametag|mobs|gear|vanished [true|false], /invis vanished list, /invis remember [true|false], or /invis config"));
+                    Minecraft client = Minecraft.getInstance();
+                    client.setScreenAndShow(InvistagsConfigScreen.create(client.gui.screen()));
                     return 1;
                 })
             );
+
+            for (Toggle toggle : Toggle.values()) {
+                root.then(ClientCommands.literal(toggle.commandName())
+                    .executes(context -> report(toggle, context.getSource()))
+                    .then(ClientCommands.argument("value", BoolArgumentType.bool())
+                        .executes(context -> apply(
+                            toggle,
+                            BoolArgumentType.getBool(context, "value"),
+                            context.getSource()))
+                    )
+                );
+            }
+
+            root.executes(context -> status(context.getSource()));
+            dispatcher.register(root);
         });
     }
 
-    private static void toggleEverything(Minecraft client) {
-        boolean enabled = !(ModConfig.showInvisibleSkin
-            && ModConfig.showInvisibleNametag
-            && ModConfig.showInvisibleGear);
-        ModConfig.showInvisibleSkin = enabled;
-        ModConfig.showInvisibleNametag = enabled;
-        ModConfig.showInvisibleGear = enabled;
+    private static int report(Toggle toggle, FabricClientCommandSource source) {
+        source.sendFeedback(Component.literal(
+            toggle.feedbackLabel() + ": " + onOff(ModConfig.get(toggle))));
+        return 1;
+    }
+
+    private static int apply(Toggle toggle, boolean value, FabricClientCommandSource source) {
+        ModConfig.set(toggle, value);
+        boolean saved = ModConfig.save();
+        source.sendFeedback(Component.literal(
+            toggle.feedbackLabel() + " set to " + onOff(value) + " "
+                + persistenceNote(saved, toggle != Toggle.REMEMBER)));
+        return 1;
+    }
+
+    private static String persistenceNote(boolean saved, boolean gatedByRemember) {
+        if (!saved) {
+            return "§c(save failed)";
+        }
+        return gatedByRemember && !ModConfig.get(Toggle.REMEMBER)
+            ? "§7(not saved: remember is off)"
+            : "§7(saved)";
+    }
+
+    private static int status(FabricClientCommandSource source) {
+        source.sendFeedback(Component.literal("§6=== InvisTags Config ==="));
+        for (Toggle toggle : Toggle.values()) {
+            source.sendFeedback(Component.literal(
+                toggle.statusLabel() + ": " + onOff(ModConfig.get(toggle))));
+        }
+        String names = Arrays.stream(Toggle.values())
+            .map(Toggle::commandName)
+            .collect(Collectors.joining("|"));
+        source.sendFeedback(Component.literal(
+            "§7Use /invis " + names + " [true|false], or /invis config"));
+        return 1;
+    }
+
+    private static String onOff(boolean value) {
+        return value ? "§aON" : "§cOFF";
+    }
+
+    private static void toggleGroup(Minecraft client) {
+        boolean enabled = !KEYBIND_GROUP.stream().allMatch(ModConfig::get);
+        KEYBIND_GROUP.forEach(toggle -> ModConfig.set(toggle, enabled));
         ModConfig.save();
 
         if (client.player != null) {
-            client.player.sendOverlayMessage(Component.translatable(
+            client.gui.hud.setOverlayMessage(Component.translatable(
                 "message.invistags.toggled",
                 Component.translatable(enabled ? "message.invistags.on" : "message.invistags.off")
-            ));
+            ), false);
         }
     }
 }
