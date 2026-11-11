@@ -71,6 +71,14 @@ test {
     useJUnitPlatform()
 }
 
+// The LAN gametest joins a bot from another machine, which the harness's network
+// synchronizer would reject as unsynchronized packet traffic.
+tasks.matching { it.name == "runClientGameTest" }.configureEach {
+    if (System.getenv("INVISTAGS_LAN_BOT") != null) {
+        jvmArgs "-Dfabric.client.gametest.disableNetworkSynchronizer=true"
+    }
+}
+
 processResources {
     inputs.property "version", project.version
     inputs.property "minecraft_version", project.minecraft_version

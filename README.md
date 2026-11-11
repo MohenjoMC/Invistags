@@ -242,6 +242,16 @@ Screenshots are written to `build/run/clientGameTest/screenshots/`.
 
 The harness gives a world 1200 ticks to load, so run it on a real display (the test box's X session works). A software-rendered Xvfb server on the same hardware is not fast enough and times out before the test body.
 
+### Two-player gametest over the network
+
+A second client test starts a dedicated server on `0.0.0.0:25565` with offline auth and waits for a named player to join:
+
+```bash
+INVISTAGS_LAN_BOT=Siftbot ./gradlew runClientGameTest
+```
+
+Start that player first — a second client or a bot such as siftbot — pointed at an address this host answers on. The test gives them diamond gear while visible, turns them invisible, then strips the gear server-side and screenshots the result with gear reveal on and off. Without `INVISTAGS_LAN_BOT` the test returns immediately, so the normal run needs no second client. Fabric's network synchronizer is disabled for the run (external clients are unsynchronized traffic), which is why the bot may join before the in-process client finishes connecting.
+
 ### Architecture
 
 Each user-facing toggle is declared once in `Toggle`: command name, JSON config key, default value, status and feedback labels, and the translation key suffixes. The `/invis` command tree, the Cloth Config screen and the status dump are all built by looping over `Toggle.values()`, so a new toggle is one enum constant plus its translations. `ModConfig` only stores a value per toggle and reads/writes `invistags.json`; it does not know what any toggle does. Rendering behaviour lives in the mixins under `mixin/client/`, which read the toggles they need. The unit tests loop over the same catalogue, so every toggle must round-trip through the config file and have the translations the screen and command expect.
