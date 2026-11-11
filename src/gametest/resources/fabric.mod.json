@@ -6,7 +6,8 @@
   "environment": "client",
   "entrypoints": {
     "fabric-client-gametest": [
-      "org.codersoft.cleaspfabric.gametest.InvisTagsClientGameTest"
+      "org.codersoft.cleaspfabric.gametest.InvisTagsClientGameTest",
+      "org.codersoft.cleaspfabric.gametest.InvisTagsLanGameTest"
     ]
   },
   "depends": {
