@@ -8,7 +8,6 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import org.codersoft.cleaspfabric.client.GearReveal;
 import org.codersoft.cleaspfabric.client.ModConfig;
-import org.codersoft.cleaspfabric.client.VanishedPlayers;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -47,19 +46,14 @@ public class PlayerGearMixin {
         method = "updateRenderState(Lnet/minecraft/entity/PlayerLikeEntity;Lnet/minecraft/client/render/entity/state/PlayerEntityRenderState;F)V",
         at = @At("RETURN")
     )
-    private void invistags$restoreGearAndMark(
+    private void invistags$restoreGear(
         PlayerLikeEntity entity,
         PlayerEntityRenderState state,
         float tickDelta,
         CallbackInfo ci
     ) {
-        if (entity instanceof PlayerEntity player) {
-            if (!invistags$replaced.isEmpty()) {
-                GearReveal.restore(player, invistags$replaced);
-            }
-            if (VanishedPlayers.isFlagged(player) && state.displayName != null) {
-                state.displayName = state.displayName.copy().append(VanishedPlayers.marker());
-            }
+        if (entity instanceof PlayerEntity player && !invistags$replaced.isEmpty()) {
+            GearReveal.restore(player, invistags$replaced);
         }
         invistags$replaced = Map.of();
     }

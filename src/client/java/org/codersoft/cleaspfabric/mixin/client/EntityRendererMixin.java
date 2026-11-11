@@ -5,7 +5,6 @@ import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import org.codersoft.cleaspfabric.client.ModConfig;
-import org.codersoft.cleaspfabric.client.VanishedPlayers;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -24,8 +23,7 @@ public class EntityRendererMixin<T extends LivingEntity> {
         double squaredDistanceToCamera,
         CallbackInfoReturnable<Boolean> cir
     ) {
-        if (!ModConfig.showInvisibleNametag && !ModConfig.showInvisibleMobs
-            && !ModConfig.flagVanishedPlayers) {
+        if (!ModConfig.showInvisibleNametag && !ModConfig.showInvisibleMobs) {
             return;
         }
 
@@ -33,12 +31,6 @@ public class EntityRendererMixin<T extends LivingEntity> {
         if (client.player == null) return;
 
         if (entity instanceof PlayerEntity player) {
-            // Vanish-flagged players always get a label, even when the invisibility
-            // nametag toggle is off.
-            if (VanishedPlayers.isFlagged(player)) {
-                cir.setReturnValue(true);
-                return;
-            }
             if (!ModConfig.showInvisibleNametag) return;
             // Never show your own nametag through this.
             if (player == client.player) return;

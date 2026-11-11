@@ -3,6 +3,7 @@ package org.codersoft.cleaspfabric.gametest;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import org.codersoft.cleaspfabric.client.InvisiblePlayerNotifier;
 import org.codersoft.cleaspfabric.client.InvistagsConfigScreen;
 import org.codersoft.cleaspfabric.client.ModConfig;
 
@@ -22,7 +23,7 @@ public final class InvisTagsClientGameTest implements FabricClientGameTest {
                 ModConfig.showInvisibleSkin = true;
                 ModConfig.showInvisibleNametag = true;
                 ModConfig.showInvisibleGear = true;
-                ModConfig.flagVanishedPlayers = true;
+                ModConfig.toastInvisiblePlayers = true;
             });
             context.waitTicks(20);
 
@@ -37,6 +38,15 @@ public final class InvisTagsClientGameTest implements FabricClientGameTest {
             context.runOnClient(client -> client.player.networkHandler.sendChatCommand("invis"));
             context.waitTicks(10);
             context.takeScreenshot("invistags-status");
+
+            // Render a toast with a real skin so the head + name path is exercised
+            // even though a singleplayer world only contains the local player.
+            context.runOnClient(client -> InvisiblePlayerNotifier.showPreview(client, client.player));
+            context.waitTicks(10);
+            context.takeScreenshot("invistags-toast");
+            if (!context.computeOnClient(client -> client.getToastManager() != null)) {
+                throw new AssertionError("Toast manager unavailable");
+            }
         }
     }
 }

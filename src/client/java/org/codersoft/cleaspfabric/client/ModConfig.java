@@ -17,7 +17,7 @@ public class ModConfig {
     public static boolean showInvisibleNametag = false;
     public static boolean showInvisibleMobs = false;
     public static boolean showInvisibleGear = false;
-    public static boolean flagVanishedPlayers = false;
+    public static boolean toastInvisiblePlayers = false;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
@@ -56,7 +56,7 @@ public class ModConfig {
         boolean nametag = false;
         boolean mobs = false;
         boolean gear = false;
-        boolean vanished = false;
+        boolean toast = false;
         try {
             String json = Files.readString(path);
             JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
@@ -81,9 +81,9 @@ public class ModConfig {
                 if (isBoolean(gearElement)) {
                     gear = gearElement.getAsBoolean();
                 }
-                JsonElement vanishedElement = obj.get("flagVanishedPlayers");
-                if (isBoolean(vanishedElement)) {
-                    vanished = vanishedElement.getAsBoolean();
+                JsonElement toastElement = obj.get("toastInvisiblePlayers");
+                if (isBoolean(toastElement)) {
+                    toast = toastElement.getAsBoolean();
                 }
             }
         } catch (Exception e) {
@@ -95,7 +95,7 @@ public class ModConfig {
         showInvisibleNametag = nametag;
         showInvisibleMobs = mobs;
         showInvisibleGear = gear;
-        flagVanishedPlayers = vanished;
+        toastInvisiblePlayers = toast;
         return true;
     }
 
@@ -121,7 +121,7 @@ public class ModConfig {
                 obj.addProperty("showInvisibleNametag", showInvisibleNametag);
                 obj.addProperty("showInvisibleMobs", showInvisibleMobs);
                 obj.addProperty("showInvisibleGear", showInvisibleGear);
-                obj.addProperty("flagVanishedPlayers", flagVanishedPlayers);
+                obj.addProperty("toastInvisiblePlayers", toastInvisiblePlayers);
             }
             Files.writeString(path, GSON.toJson(obj) + "\n");
             return true;

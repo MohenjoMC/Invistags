@@ -86,7 +86,7 @@ jobs:
 
             New in this release:
             - Armour and held-item reveal for invisible players (last-seen gear cache)
-            - Vanished-player flag (entities missing from the tab list)
+            - Invisible-player toast with the player's name and head
             - Two-player gametest: a real client observes the mineflayer bot while the server strips its gear
 
             Automated builds for MC versions:

@@ -64,11 +64,11 @@ public final class InvistagsConfigScreen {
 
         general.addEntry(entries
             .startBooleanToggle(
-                Text.translatable("config.invistags.flagVanishedPlayers"),
-                ModConfig.flagVanishedPlayers)
+                Text.translatable("config.invistags.toastInvisiblePlayers"),
+                ModConfig.toastInvisiblePlayers)
             .setDefaultValue(false)
-            .setTooltip(Text.translatable("config.invistags.flagVanishedPlayers.tooltip"))
-            .setSaveConsumer(value -> ModConfig.flagVanishedPlayers = value)
+            .setTooltip(Text.translatable("config.invistags.toastInvisiblePlayers.tooltip"))
+            .setSaveConsumer(value -> ModConfig.toastInvisiblePlayers = value)
             .build());
 
         general.addEntry(entries

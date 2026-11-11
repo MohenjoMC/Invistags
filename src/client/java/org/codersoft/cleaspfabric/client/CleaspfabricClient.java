@@ -15,8 +15,6 @@ import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
 public class CleaspfabricClient implements ClientModInitializer {
 
     public static final Logger LOGGER = LoggerFactory.getLogger("invisnametag");
@@ -48,7 +46,7 @@ public class CleaspfabricClient implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             GearReveal.tick(client);
-            VanishedPlayers.tick(client);
+            InvisiblePlayerNotifier.tick(client);
             while (toggleKey.wasPressed()) {
                 toggleEverything(client);
             }
@@ -138,33 +136,20 @@ public class CleaspfabricClient implements ClientModInitializer {
                         })
                     )
                 )
-                .then(ClientCommandManager.literal("vanished")
+                .then(ClientCommandManager.literal("toast")
                     .executes(context -> {
-                        boolean current = ModConfig.flagVanishedPlayers;
-                        List<String> names = VanishedPlayers.flaggedNames(MinecraftClient.getInstance());
-                        String flagged = names.isEmpty()
-                            ? " §7(none currently flagged)"
-                            : " §7(flagged: " + String.join(", ", names) + ")";
+                        boolean current = ModConfig.toastInvisiblePlayers;
                         context.getSource().sendFeedback(Text.literal(
-                            "Vanished flag: " + (current ? "§aON" : "§cOFF") + flagged));
+                            "Invisible player toast: " + (current ? "§aON" : "§cOFF")));
                         return 1;
                     })
-                    .then(ClientCommandManager.literal("list")
-                        .executes(context -> {
-                            List<String> names = VanishedPlayers.flaggedNames(MinecraftClient.getInstance());
-                            context.getSource().sendFeedback(Text.literal(names.isEmpty()
-                                ? "§7No vanished players currently flagged."
-                                : "§cVanished players: §f" + String.join(", ", names)));
-                            return 1;
-                        })
-                    )
                     .then(ClientCommandManager.argument("value", BoolArgumentType.bool())
                         .executes(context -> {
                             boolean value = BoolArgumentType.getBool(context, "value");
-                            ModConfig.flagVanishedPlayers = value;
+                            ModConfig.toastInvisiblePlayers = value;
                             ModConfig.save();
                             context.getSource().sendFeedback(Text.literal(
-                                "Vanished flag set to " + (value ? "§aON" : "§cOFF") + " §7(saved)"));
+                                "Invisible player toast set to " + (value ? "§aON" : "§cOFF") + " §7(saved)"));
                             return 1;
                         })
                     )
@@ -199,11 +184,11 @@ public class CleaspfabricClient implements ClientModInitializer {
                     context.getSource().sendFeedback(Text.literal(
                         "Gear: " + (ModConfig.showInvisibleGear ? "§aON" : "§cOFF")));
                     context.getSource().sendFeedback(Text.literal(
-                        "Vanished flag: " + (ModConfig.flagVanishedPlayers ? "§aON" : "§cOFF")));
+                        "Toast on invisible players: " + (ModConfig.toastInvisiblePlayers ? "§aON" : "§cOFF")));
                     context.getSource().sendFeedback(Text.literal(
                         "Remember state: " + (ModConfig.rememberState ? "§aON" : "§cOFF")));
                     context.getSource().sendFeedback(Text.literal(
-                        "§7Use /invis skin|nametag|mobs|gear|vanished [true|false], /invis vanished list, /invis remember [true|false], or /invis config"));
+                        "§7Use /invis skin|nametag|mobs|gear|toast [true|false], /invis remember [true|false], or /invis config"));
                     return 1;
                 })
             );

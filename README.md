@@ -2,9 +2,9 @@
 
 # InvisTags by CoderSoft
 
-A **client-side Fabric mod** that forces nametags, player skins, armour and held items of invisible players to render, and flags players a server has vanished from the tab list. All features are toggleable at runtime via the `/invis` command.
+A **client-side Fabric mod** that forces nametags, player skins, armour and held items of invisible players to render, and raises a toast with the player's name and head when an invisible player comes near. All features are toggleable at runtime via the `/invis` command.
 
-> **Stable 1.2.0.** Gear reveal and the vanished-player flag passed unit tests, client gametests on every supported version, and a two-player multiplayer test.
+> **Stable 1.2.x.** Gear reveal passed unit tests and a two-player multiplayer test. The invisible-player toast replaces the removed vanished-player flag.
 
 Built for **Minecraft 1.21.11**, **26.1.2**, **26.2**, and **26.3**.
 
@@ -14,7 +14,7 @@ Built for **Minecraft 1.21.11**, **26.1.2**, **26.2**, and **26.3**.
 - **Full nametag opacity** — Restores the nametag background and text to 100% opacity (bypasses the transparency applied by the invisibility effect).
 - **Skin visibility** — Renders the player body/skin at full opacity instead of the ghostly semi-transparent effect.
 - **Gear reveal** — Restores armour and held items on invisible players when a server strips them, using the last gear your client saw. Vanilla itself keeps gear visible; servers that send empty equipment packets are the target here.
-- **Vanished-player flag** — Detects player entities the server sent but hid from the tab list, adds a red `[VANISHED]` suffix to their nametag and posts a one-time chat alert.
+- **Invisible-player toast** — Shows a toast with the player's name and head the first time an invisible player comes within 64 blocks. Each invisibility is announced once; the alert re-arms when the player becomes visible or leaves the world.
 - **Sneaking fix** — Corrects the sneaking pose for invisible players when the nametag is forced visible.
 - **Invisible mob support** — Optional reveal for invisible mobs' bodies, plus nametags for custom-named invisible mobs (off by default).
 - **State persistence** — **Remember state** is on by default, so the last toggles are restored on launch. Turn it off to start with everything disabled every time.
@@ -132,9 +132,8 @@ Use the `/invis` command in-game:
 | `/invis mobs false` | Disables mob reveal (reverts to vanilla behavior) |
 | `/invis gear true` | Restores last-seen armour and held items on invisible players |
 | `/invis gear false` | Stops restoring gear (vanilla behaviour) |
-| `/invis vanished true` | Flags entities that are missing from the tab list with `[VANISHED]` |
-| `/invis vanished false` | Stops flagging and removes all markers |
-| `/invis vanished list` | Lists currently flagged vanished players |
+| `/invis toast true` | Shows a name-and-head toast when an invisible player comes within 64 blocks |
+| `/invis toast false` | Stops showing invisible-player toasts |
 | `/invis remember true` | Restores the last toggles on the next launch |
 | `/invis remember false` | Starts with all features disabled on the next launch |
 
@@ -155,14 +154,15 @@ Vanilla invisibility hides only the player model; armour and held items stay vis
 
 A client cannot invent gear it has never received. InvisTags therefore remembers the six equipment slots while a player is visible and re-applies the remembered stacks for the render pass while that player is invisible. This works for gear you have seen since joining the server. It cannot recover gear the server never sent, and it cannot see gear swapped while the player stays invisible if the server also strips the update.
 
-### Vanished-player detection
+### Invisible-player toast
 
-The tab list is compared against the player entities in the current world every tick. A player entity whose UUID is absent from the tab list is flagged. This is the usual signature of a vanish plugin.
+Every client tick, players in the current world are checked for the invisibility effect and their distance to you. The first time an invisible player is within 64 blocks, a system toast appears with that player's name and skin head.
 
-- If the tab list is empty, detection is skipped. Otherwise every player on a server that does not use the tab list would be a false positive.
-- Server NPCs/fake players are entities with no tab entry and will also be flagged.
-- Players outside the client's tracking range are not entities yet and cannot be flagged until they load in.
-- The nametag marker is independent of the invisibility nametag toggle; the chat alert is sent once per flag transition.
+- A player is announced once per invisibility episode. Becoming visible or leaving the world forgets them, so a later invisibility triggers a fresh toast.
+- Walking out of and back into range does not repeat the toast for the same episode.
+- Your own player and spectators are skipped.
+- The head comes from the tab-list skin; if the server does not list the player, the default skin is used.
+- The toast is independent of the skin/nametag/gear reveals; you can use it without forcing the model to render.
 
 
 ## API Differences Between Versions
@@ -183,7 +183,6 @@ The 26.x branches use a significantly different rendering API (unobfuscated Moja
 | `CameraRenderState` (top-level) | `state.level.CameraRenderState` |
 | `PlayerEntityRenderer#updateRenderState` | `AvatarRenderer#extractRenderState` |
 | `getEquippedStack` / `equipStack` | `getItemBySlot` / `setItemSlot` |
-| `getListedPlayerListEntries` | `getListedOnlinePlayers` |
 | `EntityRenderState.displayName` | `EntityRenderState.nameTag` |
 
 ## Project Structure
@@ -205,16 +204,17 @@ src/
     │   │   ├── CleaspfabricDataGenerator.java
     │   │   ├── GearReveal.java             — Last-seen gear cache + render-state swap
     │   │   ├── InvistagsConfigScreen.java  — Shared Cloth Config screen
+    │   │   ├── InvisiblePlayerDetector.java— Pure toast-selection logic
+    │   │   ├── InvisiblePlayerNotifier.java— Per-tick proximity tracking + toasts
+    │   │   ├── InvisiblePlayerToast.java   — System toast with a player-head icon
     │   │   ├── ModConfig.java              — Toggle state + JSON persistence
     │   │   ├── ModMenuIntegration.java     — Mod Menu entrypoint
-    │   │   ├── VanishDetector.java         — Pure tab-list comparison logic
-    │   │   └── VanishedPlayers.java        — Per-tick vanish tracking + chat alerts
     │   └── mixin/client/
     │       ├── EntityRendererMixin.java    — Forces shouldShowName() to true
     │       ├── InvisibilityRenderMixin.java— Restores skin opacity
     │       ├── LabelRenderMixin.java       — Restores nametag opacity
     │       ├── LabelSneakMixin.java        — Fixes sneaking pose
-    │       └── PlayerGearMixin.java        — Temporary gear swap + [VANISHED] label
+    │       └── PlayerGearMixin.java        — Temporary gear swap for the render pass
     └── resources/
         ├── assets/invistags/lang/en_us.json — Keybind/config strings
         └── cleaspfabric.client.mixins.json — Client mixin registration
@@ -224,7 +224,7 @@ src/gametest/                                — Optional client gametest harnes
 
 ## Development
 
-Run the headless unit tests (config persistence and vanish detection, no Minecraft launch required):
+Run the headless unit tests (config persistence and toast selection, no Minecraft launch required):
 
 ```bash
 ./gradlew test
