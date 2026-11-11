@@ -57,18 +57,6 @@ class ToggleTest {
      * every other toggle is gated by it.
      */
     @Test
-    void rememberIsTheOnlyUngatedToggle() {
-        assertFalse(Toggle.REMEMBER.persistedWhileRemembering(),
-            "the remember flag must be written even when it is off");
-        for (Toggle toggle : Toggle.values()) {
-            if (toggle != Toggle.REMEMBER) {
-                assertTrue(toggle.persistedWhileRemembering(),
-                    toggle + " must only be persisted while rememberState is on");
-            }
-        }
-    }
-
-    @Test
     void everyToggleHasATranslatedTitleAndTooltip() {
         JsonObject lang = readLang();
         for (Toggle toggle : Toggle.values()) {

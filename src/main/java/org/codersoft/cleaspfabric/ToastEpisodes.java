@@ -83,7 +83,7 @@ public final class ToastEpisodes {
             if (stillInvisible.contains(id)) {
                 continue;
             }
-            int absent = absentTicks.merge(id, 1, Integer::sum);
+            int absent = absentTicks.merge(id, 1, (count, one) -> Math.min(count + one, ABSENCE_GRACE_TICKS + 1));
             if (absent > ABSENCE_GRACE_TICKS) {
                 announced.remove(id);
                 absentTicks.remove(id);

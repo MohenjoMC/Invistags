@@ -19,10 +19,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Draws the model of an invisible entity at full opacity.
  *
  * <p>{@code state.invisible} is shared with the label and feature passes, so the reveal
- * clears it for the duration of {@code render} and then puts it back. Capes, ears, wool
- * and the other features that check the flag therefore render too, and nothing outside the
- * frame sees a changed state. {@link InvisibleRenderState} keeps the real value available
- * to the label rule.
+ * clears it for the duration of {@code render} and puts it back at the end. Capes, ears,
+ * wool and the other features that check the flag therefore render too. The render state
+ * object is rebuilt each frame, but restoring keeps the flag truthful for anything that
+ * reads it later, and {@link InvisibleRenderState} keeps the real value available to the
+ * label rule inside the pass.
  */
 @Mixin(LivingEntityRenderer.class)
 public class LivingEntityVisibilityMixin {

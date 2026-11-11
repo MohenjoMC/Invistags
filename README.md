@@ -4,16 +4,16 @@
 
 A **client-side Fabric mod** that forces nametags, player skins, armour and held items of invisible players to render, and raises a toast with the player's name and head when an invisible player comes near. All features are toggleable at runtime via the `/invis` command.
 
-> **Stable 1.3.x.** Gear reveal passed a two-player network test. The invisible-player toast replaces the removed vanished-player flag.
+> **Stable 1.3.x.** A two-player run over the network restored a bot's stripped gear on screen. The invisible-player toast replaces the removed vanished-player flag.
 
 Built for **Minecraft 1.21.11**, **26.1.2**, **26.2**, and **26.3**.
 
 ## Features
 
-- **Nametag visibility** — Forces nametags to render above invisible players regardless of render distance or status effects.
+- **Nametag visibility** — Forces nametags to render above invisible players within the vanilla 64-block name-tag range, regardless of status effects or team visibility rules.
 - **Skin visibility** — Renders the player body/skin at full opacity instead of the ghostly semi-transparent effect.
 - **Gear reveal** — Restores armour and held items on invisible players when a server strips them, using the last gear your client saw. Vanilla itself keeps gear visible; servers that send empty equipment packets are the target here.
-- **Invisible-player toast** — Shows a toast with the player's name and head the first time an invisible player comes within 64 blocks. Each invisibility is announced once; the alert re-arms when the player becomes visible or leaves the world.
+- **Invisible-player toast** — Shows a toast with the player's name and head the first time an invisible player comes within 64 blocks. Each invisibility is announced once; the alert re-arms when the player becomes visible, or after they have been out of the client's tracked range for five seconds.
 - **Sneaking fix** — Keeps a forced nametag visible through blocks while the invisible player is crouching.
 - **Invisible mob support** — Optional reveal for invisible mobs' bodies, plus nametags for custom-named invisible mobs (off by default).
 - **State persistence** — **Remember state** is on by default, so the last toggles are restored on launch. Turn it off to start with everything disabled every time.
@@ -157,7 +157,7 @@ A client cannot invent gear it has never received. InvisTags therefore remembers
 
 Every client tick, players in the current world are checked for the invisibility effect and their distance to you. The first time an invisible player is within 64 blocks, a system toast appears with that player's name and skin head.
 
-- A player is announced once per invisibility episode. Becoming visible or leaving the world forgets them, so a later invisibility triggers a fresh toast.
+- A player is announced once per invisibility episode. Becoming visible forgets them immediately; a player who disappears from the client's tracked range keeps the episode for 100 ticks (five seconds) before it is forgotten, so a brief range gap does not re-toast. Leaving the world normally outlasts that grace, so a later invisibility triggers a fresh toast.
 - Walking out of and back into range does not repeat the toast for the same episode.
 - Your own player and spectators are skipped.
 - The head comes from the tab-list skin; if the server does not list the player, the default skin is used.

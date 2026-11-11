@@ -7,8 +7,10 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerConnection;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.entity.player.PlayerEntity;
 import org.codersoft.cleaspfabric.ModConfig;
+import org.codersoft.cleaspfabric.client.GearReveal;
 import org.codersoft.cleaspfabric.Toggle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +70,9 @@ public final class InvisTagsLanGameTest implements FabricClientGameTest {
              TestServerConnection connection = server.connect()) {
             connection.getClientWorld().waitForChunksRender();
             context.restoreDefaultGameOptions();
+            // restoreDefaultGameOptions raises the frame cap; keep the tick budget
+            // roughly proportional to wall time while waiting for the remote bot.
+            context.runOnClient(client -> client.options.getMaxFps().setValue(20));
 
             context.runOnClient(client -> {
                 ModConfig.set(Toggle.SKIN, true);
@@ -76,7 +81,12 @@ public final class InvisTagsLanGameTest implements FabricClientGameTest {
                 ModConfig.set(Toggle.TOAST, true);
             });
 
-            context.waitFor(client -> playerListContains(client, bot), BOT_JOIN_TIMEOUT_TICKS);
+            try {
+                context.waitFor(client -> playerListContains(client, bot), BOT_JOIN_TIMEOUT_TICKS);
+            } catch (AssertionError e) {
+                throw new AssertionError("Bot " + bot + " never appeared in the tab list. Is "
+                    + BOT_ENV + "=" + bot + " running and pointed at this host?", e);
+            }
             context.waitTicks(20);
 
             server.runCommand("time set day");
@@ -104,6 +114,22 @@ public final class InvisTagsLanGameTest implements FabricClientGameTest {
             context.waitTicks(20);
             if (!context.computeOnClient(client -> botEquipmentIsEmpty(client, bot))) {
                 throw new AssertionError(bot + " still has live equipment after the server stripped it");
+            }
+            if (!context.computeOnClient(client -> {
+                PlayerEntity entity = botEntity(client, bot);
+                if (entity == null) {
+                    return false;
+                }
+                PlayerEntityRenderState state = new PlayerEntityRenderState();
+                GearReveal.decorate(entity, state, client.getItemModelManager());
+                return !state.equippedHeadStack.isEmpty()
+                    && !state.equippedChestStack.isEmpty()
+                    && !state.equippedLegsStack.isEmpty()
+                    && !state.equippedFeetStack.isEmpty()
+                    && !state.rightHandItemState.isEmpty()
+                    && !state.leftHandItemState.isEmpty();
+            })) {
+                throw new AssertionError("Gear cache did not fill all six render-state slots for " + bot);
             }
             context.takeScreenshot("lan-bot-stripped-gear-on");
 
