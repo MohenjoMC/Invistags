@@ -240,6 +240,8 @@ Run the client gametest (boots a real singleplayer world, applies every mixin, o
 
 Screenshots are written to `build/run/clientGameTest/screenshots/`.
 
+The harness gives a world 1200 ticks to load, so run it on a real display (the test box's X session works). A software-rendered Xvfb server on the same hardware is not fast enough and times out before the test body.
+
 ### Architecture
 
 Each user-facing toggle is declared once in `Toggle`: command name, JSON config key, default value, status and feedback labels, and the translation key suffixes. The `/invis` command tree, the Cloth Config screen and the status dump are all built by looping over `Toggle.values()`, so a new toggle is one enum constant plus its translations. `ModConfig` only stores a value per toggle and reads/writes `invistags.json`; it does not know what any toggle does. Rendering behaviour lives in the mixins under `mixin/client/`, which read the toggles they need. The unit tests loop over the same catalogue, so every toggle must round-trip through the config file and have the translations the screen and command expect.
