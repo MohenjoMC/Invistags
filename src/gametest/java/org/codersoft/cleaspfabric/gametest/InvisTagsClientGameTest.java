@@ -46,9 +46,20 @@ public final class InvisTagsClientGameTest implements FabricClientGameTest {
             context.takeScreenshot("invistags-config");
             context.runOnClient(client -> client.setScreen(null));
 
+            context.runOnClient(client -> ModConfig.set(Toggle.MOBS, true));
             context.runOnClient(client -> client.player.networkHandler.sendChatCommand("invis"));
             context.waitTicks(10);
             context.takeScreenshot("invistags-status");
+
+            // An invisible, custom-named mob exercises the hasLabel injection and
+            // NametagPolicy's mob branch on a real render pass.
+            singleplayer.getServer().runCommand("time set day");
+            singleplayer.getServer().runCommand(
+                "execute at @a run summon minecraft:zombie ^ ^ ^3 "
+                    + "{CustomName:'Spotted',CustomNameVisible:1b,"
+                    + "active_effects:[{id:\"minecraft:invisibility\",duration:1200,show_particles:0b}]}");
+            context.waitTicks(20);
+            context.takeScreenshot("invistags-invisible-mob");
 
             // Render a toast with a real skin so the head + name path is exercised
             // even though a singleplayer world only contains the local player.
