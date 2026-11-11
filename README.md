@@ -4,7 +4,7 @@
 
 A **client-side Fabric mod** that forces nametags, player skins, armour and held items of invisible players to render, and raises a toast with the player's name and head when an invisible player comes near. All features are toggleable at runtime via the `/invis` command.
 
-> **Stable 1.2.x.** Gear reveal passed unit tests and a two-player multiplayer test. The invisible-player toast replaces the removed vanished-player flag.
+> **Stable 1.3.x.** Gear reveal passed unit tests and a two-player multiplayer test over the network. The invisible-player toast replaces the removed vanished-player flag.
 
 Built for **Minecraft 1.21.11**, **26.1.2**, **26.2**, and **26.3**.
 
@@ -76,7 +76,7 @@ The first build will download Gradle, Minecraft assets, and all dependencies.
 ### 4. Locate the Build Artifact
 
 ```
-build/libs/invistags-1.2.0.jar
+build/libs/invistags-1.3.0.jar
 ```
 
 ## Installation
@@ -95,12 +95,12 @@ Copy the built JAR to your Minecraft `mods` folder:
 
 **Linux / macOS:**
 ```bash
-cp build/libs/invistags-1.2.0.jar ~/.minecraft/mods/
+cp build/libs/invistags-1.3.0.jar ~/.minecraft/mods/
 ```
 
 **Windows:**
 ```cmd
-copy build\libs\invistags-1.2.0.jar %appdata%\.minecraft\mods\
+copy build\libs\invistags-1.3.0.jar %appdata%\.minecraft\mods\
 ```
 
 Your `mods` folder should contain at minimum:
@@ -108,7 +108,7 @@ Your `mods` folder should contain at minimum:
 ```
 mods/
 ├── fabric-api-<version>.jar
-└── invistags-1.2.0.jar
+└── invistags-1.3.0.jar
 ```
 
 ### 4. Launch
